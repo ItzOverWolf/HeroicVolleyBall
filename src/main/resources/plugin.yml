@@ -1,0 +1,4 @@
+name: HeroicVolleyBall
+version: '${version}'
+main: me.heroicstudios.heroicvolleyball.HeroicVolleyBall
+api-version: '1.21'
