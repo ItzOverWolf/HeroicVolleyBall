@@ -1,4 +1,24 @@
 name: HeroicVolleyBall
 version: '${version}'
 main: me.heroicstudios.heroicvolleyball.HeroicVolleyBall
-api-version: '1.21'
+api-version: '26.3'
+description: A Haikyuu inspired volleyball plugin
+authors: [HeroicStudios]
+
+commands:
+  volleywand:
+    description: Gives you the volleyball selection wand (stone axe)
+    usage: /volleywand
+    permission: heroicvolleyball.volleywand
+  setarena:
+    description: Sets the selected region as a team's arena
+    usage: /setarena <red|blue>
+    permission: heroicvolleyball.setarena
+
+permissions:
+  heroicvolleyball.volleywand:
+    description: Allows use of /volleywand
+    default: op
+  heroicvolleyball.setarena:
+    description: Allows use of /setarena
+    default: op

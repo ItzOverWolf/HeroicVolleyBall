@@ -1,17 +1,54 @@
 package me.heroicstudios.heroicvolleyball;
 
+import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
+import me.heroicstudios.heroicvolleyball.command.SetArenaCommand;
+import me.heroicstudios.heroicvolleyball.command.VolleyWandCommand;
+import me.heroicstudios.heroicvolleyball.listener.ArenaListener;
+import me.heroicstudios.heroicvolleyball.wand.WandListener;
+import me.heroicstudios.heroicvolleyball.wand.WandManager;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class HeroicVolleyBall extends JavaPlugin {
 
+    private ArenaManager arenaManager;
+    private WandManager wandManager;
+
     @Override
     public void onEnable() {
-        // Plugin startup logic
+        saveDefaultConfig();
 
+        this.arenaManager = new ArenaManager(this);
+        this.wandManager = new WandManager(this);
+
+        getServer().getPluginManager().registerEvents(new WandListener(wandManager), this);
+        getServer().getPluginManager().registerEvents(new ArenaListener(arenaManager), this);
+
+        PluginCommand volleyWandCommand = getCommand("volleywand");
+        if (volleyWandCommand != null) {
+            volleyWandCommand.setExecutor(new VolleyWandCommand(wandManager));
+        }
+
+        SetArenaCommand setArenaCommand = new SetArenaCommand(arenaManager, wandManager);
+        PluginCommand setArena = getCommand("setarena");
+        if (setArena != null) {
+            setArena.setExecutor(setArenaCommand);
+            setArena.setTabCompleter(setArenaCommand);
+        }
     }
 
     @Override
     public void onDisable() {
-        // Plugin shutdown logic
+        if (arenaManager != null) {
+            arenaManager.save();
+        }
+    }
+
+    public ArenaManager getArenaManager() {
+        return arenaManager;
+    }
+
+    public WandManager getWandManager() {
+        return wandManager;
     }
 }
