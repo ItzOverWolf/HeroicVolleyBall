@@ -1,0 +1,3 @@
+# HeroicVolleyBall configuration
+# Arena regions are stored here automatically when you run /setarena.
+arenas: {}
