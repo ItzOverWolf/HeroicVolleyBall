@@ -123,7 +123,17 @@ public final class BallManager {
     }
 
     public boolean spawnAtStart() {
-        return resetToServe(Team.RED) || resetToServe(Team.BLUE);
+        return spawnAtStartTeam() != null;
+    }
+
+    public @Nullable Team spawnAtStartTeam() {
+        if (resetToServe(Team.RED)) {
+            return Team.RED;
+        }
+        if (resetToServe(Team.BLUE)) {
+            return Team.BLUE;
+        }
+        return null;
     }
 
     public boolean resetToServe(Team team) {
@@ -531,7 +541,7 @@ public final class BallManager {
                 resetToServe(team);
             }
             if (gameManager != null) {
-                gameManager.teleportToPositions();
+                gameManager.teleportToPositions(team);
             }
         });
     }

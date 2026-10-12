@@ -44,6 +44,10 @@ public final class StartGameCommand implements CommandExecutor {
                 sender.sendMessage(Component.text("Choose your team and position to begin.", NamedTextColor.GREEN));
                 return true;
             }
+
+            setupGui.openSolo(player);
+            sender.sendMessage(Component.text("Choose your position to start a solo game.", NamedTextColor.GREEN));
+            return true;
         }
 
         scoreManager.resetMatch();
