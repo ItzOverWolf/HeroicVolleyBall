@@ -136,6 +136,12 @@ public final class ToolManager {
         return tool == VolleyTool.SHOVEL || tool == VolleyTool.SWORD;
     }
 
+    public void giveKit(Player player) {
+        player.getInventory().addItem(create(VolleyTool.SHOVEL, VolleyTier.WOODEN));
+        player.getInventory().addItem(create(VolleyTool.SWORD, VolleyTier.WOODEN));
+        player.getInventory().addItem(create(VolleyTool.SHIELD, VolleyTier.WOODEN));
+    }
+
     private Component loreLine(String text, NamedTextColor color) {
         return Component.text(text, color).decoration(TextDecoration.ITALIC, false);
     }

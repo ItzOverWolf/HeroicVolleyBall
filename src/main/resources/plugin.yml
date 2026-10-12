@@ -22,6 +22,14 @@ commands:
     description: Spawns the volleyball near Position 6 to start a game
     usage: /startgame
     permission: heroicvolleyball.startgame
+  stopgame:
+    description: Stops the current game, removing the ball and music and resetting the score
+    usage: /stopgame
+    permission: heroicvolleyball.stopgame
+  restartgame:
+    description: Restarts the game, resetting the score and respawning the ball
+    usage: /restartgame
+    permission: heroicvolleyball.restartgame
   volleygive:
     description: Gives a volleyball tool
     usage: /volleygive <shovel|sword|shield> [wooden|iron|diamond]
@@ -34,6 +42,22 @@ commands:
     description: Plays Note Block Studio music for the game
     usage: /volleymusic <start|stop|list|reload> [song]
     permission: heroicvolleyball.volleymusic
+  partycreate:
+    description: Creates a party
+    usage: /partycreate
+    permission: heroicvolleyball.party
+  partyinvite:
+    description: Invites a player to your party
+    usage: /partyinvite <player>
+    permission: heroicvolleyball.party
+  partyleave:
+    description: Leaves your current party
+    usage: /partyleave
+    permission: heroicvolleyball.party
+  partydisband:
+    description: Disbands your party (leader only)
+    usage: /partydisband
+    permission: heroicvolleyball.party
 
 permissions:
   heroicvolleyball.volleywand:
@@ -48,6 +72,12 @@ permissions:
   heroicvolleyball.startgame:
     description: Allows use of /startgame
     default: op
+  heroicvolleyball.stopgame:
+    description: Allows use of /stopgame
+    default: op
+  heroicvolleyball.restartgame:
+    description: Allows use of /restartgame
+    default: op
   heroicvolleyball.volleygive:
     description: Allows use of /volleygive
     default: op
@@ -57,3 +87,6 @@ permissions:
   heroicvolleyball.volleymusic:
     description: Allows use of /volleymusic
     default: op
+  heroicvolleyball.party:
+    description: Allows use of the party commands
+    default: true

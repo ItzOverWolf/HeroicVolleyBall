@@ -3,6 +3,7 @@ package me.heroicstudios.heroicvolleyball.score;
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
 import me.heroicstudios.heroicvolleyball.arena.Team;
+import me.heroicstudios.heroicvolleyball.game.GameManager;
 import me.heroicstudios.heroicvolleyball.music.MusicManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -28,6 +29,7 @@ public final class ScoreManager implements Listener {
     private final HeroicVolleyBall plugin;
     private final ArenaManager arenaManager;
     private final MusicManager musicManager;
+    private GameManager gameManager;
 
     private int pointsPerSet = 25;
     private int setsToWin = 2;
@@ -50,6 +52,10 @@ public final class ScoreManager implements Listener {
         this.musicManager = musicManager;
         loadConfig();
         setupBoard();
+    }
+
+    public void setGameManager(GameManager gameManager) {
+        this.gameManager = gameManager;
     }
 
     public void loadConfig() {
@@ -154,6 +160,9 @@ public final class ScoreManager implements Listener {
                     Component.text(team.getDisplayName() + " wins the game!", team.getColor()),
                     Component.text("Run /startgame to play again", NamedTextColor.GRAY));
             playTeamSound(team, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+            if (gameManager != null) {
+                gameManager.end();
+            }
         }
     }
 
@@ -171,6 +180,9 @@ public final class ScoreManager implements Listener {
     }
 
     private List<Player> playersOf(Team team) {
+        if (gameManager != null && gameManager.isActive()) {
+            return gameManager.playersOf(team);
+        }
         List<Player> players = new ArrayList<>();
         for (Player player : Bukkit.getOnlinePlayers()) {
             if (arenaManager.getArenaAt(player.getLocation()) == team) {

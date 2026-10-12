@@ -6,6 +6,7 @@ import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
 import me.heroicstudios.heroicvolleyball.arena.Arena;
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
 import me.heroicstudios.heroicvolleyball.arena.Team;
+import me.heroicstudios.heroicvolleyball.game.GameManager;
 import me.heroicstudios.heroicvolleyball.position.PositionManager;
 import me.heroicstudios.heroicvolleyball.score.ScoreManager;
 import me.heroicstudios.heroicvolleyball.tool.VolleyTier;
@@ -28,8 +29,6 @@ import org.jetbrains.annotations.Nullable;
 
 public final class BallManager {
 
-    private static final double BALL_RADIUS = 0.45;
-    private static final double BALL_HEIGHT = 1.6;
     private static final double COLLISION_STEP = 0.1;
 
     private enum State {
@@ -40,21 +39,28 @@ public final class BallManager {
     private final HeroicVolleyBall plugin;
     private final ArenaManager arenaManager;
     private final ScoreManager scoreManager;
+    private final GameManager gameManager;
 
     private @Nullable SulfurCube ball;
     private @Nullable Location current;
     private @Nullable BukkitTask task;
     private Vector motion = new Vector();
 
+    private int size = 2;
     private int maxTouches = 3;
     private double gravity = 0.045;
     private double airDrag = 0.99;
     private double velocityScale = 1.0;
     private double maxVelocity = 3.0;
-    private double spikeDownward = 0.8;
+    private double spikeTopDown = 1.5;
+    private double spikeStraight = 0.2;
+    private double spikeUp = 0.7;
+    private double spikeTopHorizontal = 0.25;
+    private double spikeVerticalThreshold = 1.0;
     private double shieldDeflect = 0.9;
     private double bounceFactor = 0.3;
     private double settleThreshold = 0.12;
+    private boolean touchPenalty = true;
     private double shovelWooden = 0.6;
     private double shovelIron = 0.9;
     private double shovelDiamond = 1.2;
@@ -69,23 +75,30 @@ public final class BallManager {
     private @Nullable Team lastHitter;
     private int lastHitTick = -100;
 
-    public BallManager(HeroicVolleyBall plugin, ArenaManager arenaManager, ScoreManager scoreManager) {
+    public BallManager(HeroicVolleyBall plugin, ArenaManager arenaManager, ScoreManager scoreManager, GameManager gameManager) {
         this.plugin = plugin;
         this.arenaManager = arenaManager;
         this.scoreManager = scoreManager;
+        this.gameManager = gameManager;
         loadConfig();
     }
 
     public void loadConfig() {
         var config = plugin.getConfig();
+        this.size = Math.max(1, config.getInt("ball.size", 2));
         this.maxTouches = config.getInt("ball.max-touches", 3);
         this.gravity = config.getDouble("ball.gravity", 0.045);
         this.airDrag = config.getDouble("ball.air-drag", 0.99);
         this.velocityScale = config.getDouble("ball.velocity-scale", 1.0);
         this.maxVelocity = config.getDouble("ball.max-velocity", 3.0);
-        this.spikeDownward = config.getDouble("ball.spike-downward", 0.8);
+        this.spikeTopDown = config.getDouble("ball.spike.top-down", 1.5);
+        this.spikeStraight = config.getDouble("ball.spike.straight", 0.2);
+        this.spikeUp = config.getDouble("ball.spike.up", 0.7);
+        this.spikeTopHorizontal = config.getDouble("ball.spike.top-horizontal", 0.25);
+        this.spikeVerticalThreshold = config.getDouble("ball.spike.vertical-threshold", 1.0);
         this.shieldDeflect = config.getDouble("ball.shield-deflect", 0.9);
         this.bounceFactor = config.getDouble("ball.bounce", 0.3);
+        this.touchPenalty = config.getBoolean("game.opponent-touch-penalty", true);
         this.shovelWooden = config.getDouble("ball.power.shovel.wooden", 0.6);
         this.shovelIron = config.getDouble("ball.power.shovel.iron", 0.9);
         this.shovelDiamond = config.getDouble("ball.power.shovel.diamond", 1.2);
@@ -172,7 +185,7 @@ public final class BallManager {
         }
 
         this.ball = world.spawn(location, SulfurCube.class, CreatureSpawnEvent.SpawnReason.CUSTOM, cube -> {
-            cube.setSize(2);
+            cube.setSize(size);
             cube.setWander(false);
             cube.setAware(false);
             cube.setAI(false);
@@ -182,7 +195,7 @@ public final class BallManager {
             cube.setMaximumNoDamageTicks(0);
             cube.setNoDamageTicks(0);
             cube.setCustomNameVisible(true);
-            cube.setEquipped(new ItemStack(Material.RED_WOOL));
+            cube.setEquipped(new ItemStack(Material.GRAY_WOOL));
         });
 
         this.current = location.clone();
@@ -193,6 +206,7 @@ public final class BallManager {
         this.lastHitTick = -100;
         this.possession = arenaManager.getArenaAt(location);
         this.lastHitter = null;
+        applyBallColor();
         updateName();
         startTask();
     }
@@ -205,11 +219,27 @@ public final class BallManager {
         if (now - lastHitTick < 4) {
             return;
         }
-        lastHitTick = now;
 
-        Team hitter = arenaManager.getArenaAt(player.getLocation());
-        if (hitter != null) {
-            lastHitter = hitter;
+        Team playerTeam = resolveTeam(player);
+
+        Team ballSide = possession;
+        boolean penaltyActive = touchPenalty && gameManager != null && gameManager.isActive();
+        if (penaltyActive && ballSide != null && playerTeam != null && ballSide != playerTeam) {
+            lastHitTick = now;
+            scoreManager.addPoint(ballSide);
+            resetRally();
+            scheduleServeReset(ballSide);
+            if (current != null) {
+                current.getWorld().playSound(current, Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+            }
+            player.sendActionBar(Component.text("PENALTY  ", NamedTextColor.RED)
+                    .append(Component.text("You touched the opponent's ball", NamedTextColor.GRAY)));
+            return;
+        }
+
+        lastHitTick = now;
+        if (playerTeam != null) {
+            lastHitter = playerTeam;
         }
 
         if (tool == VolleyTool.SHOVEL) {
@@ -219,6 +249,16 @@ public final class BallManager {
         } else if (tool == VolleyTool.SHIELD) {
             block();
         }
+    }
+
+    private Team resolveTeam(Player player) {
+        if (gameManager != null) {
+            Team team = gameManager.getTeam(player);
+            if (team != null) {
+                return team;
+            }
+        }
+        return arenaManager.getArenaAt(player.getLocation());
     }
 
     private void bump(Player player, VolleyTier tier) {
@@ -256,11 +296,11 @@ public final class BallManager {
         Location ballLocation = current != null ? current : ball.getLocation();
         Location eye = player.getEyeLocation();
 
-        Vector direction = ballLocation.toVector().subtract(eye.toVector());
-        Vector horizontal = new Vector(direction.getX(), 0.0, direction.getZ());
+        Vector look = eye.getDirection();
+        Vector horizontal = new Vector(look.getX(), 0.0, look.getZ());
         if (horizontal.lengthSquared() < 0.01) {
-            Vector look = eye.getDirection();
-            horizontal = new Vector(look.getX(), 0.0, look.getZ());
+            Vector direction = ballLocation.toVector().subtract(eye.toVector());
+            horizontal = new Vector(direction.getX(), 0.0, direction.getZ());
         }
         if (horizontal.lengthSquared() < 0.01) {
             horizontal = new Vector(0.0, 0.0, 1.0);
@@ -268,13 +308,21 @@ public final class BallManager {
         horizontal.normalize();
 
         double power = spikePower(tier) * velocityScale;
-        Vector velocity = horizontal.multiply(power);
+        double vertical = eye.getY() - ballLocation.getY();
 
-        boolean above = (eye.getY() - ballLocation.getY()) > 1.0;
-        if (above) {
-            velocity.setY(-spikeDownward * velocityScale);
+        Vector velocity;
+        if (vertical > spikeVerticalThreshold) {
+            // Hit from above: drive the ball straight down, fast.
+            velocity = horizontal.multiply(power * spikeTopHorizontal);
+            velocity.setY(-spikeTopDown * velocityScale);
+        } else if (vertical < -spikeVerticalThreshold) {
+            // Hit from below: bounce the ball up and forward where the player is looking.
+            velocity = horizontal.multiply(power);
+            velocity.setY(spikeUp * velocityScale);
         } else {
-            velocity.setY(0.2 * velocityScale);
+            // Level hit: send it straight forward, gravity takes it down.
+            velocity = horizontal.multiply(power);
+            velocity.setY(spikeStraight * velocityScale);
         }
 
         motion = velocity;
@@ -389,13 +437,23 @@ public final class BallManager {
         return collides(world, below);
     }
 
+    private double ballRadius() {
+        return 0.45 * (size / 2.0);
+    }
+
+    private double ballHeight() {
+        return 1.6 * (size / 2.0);
+    }
+
     private boolean collides(World world, Location location) {
-        double minX = location.getX() - BALL_RADIUS;
-        double maxX = location.getX() + BALL_RADIUS;
+        double radius = ballRadius();
+        double height = ballHeight();
+        double minX = location.getX() - radius;
+        double maxX = location.getX() + radius;
         double minY = location.getY();
-        double maxY = location.getY() + BALL_HEIGHT;
-        double minZ = location.getZ() - BALL_RADIUS;
-        double maxZ = location.getZ() + BALL_RADIUS;
+        double maxY = location.getY() + height;
+        double minZ = location.getZ() - radius;
+        double maxZ = location.getZ() + radius;
 
         int x0 = (int) Math.floor(minX);
         int x1 = (int) Math.floor(maxX);
@@ -435,6 +493,19 @@ public final class BallManager {
         }
         possession = currentTeam;
         touches = maxTouches;
+        applyBallColor();
+    }
+
+    private void applyBallColor() {
+        if (ball == null || !ball.isValid()) {
+            return;
+        }
+        Material material = switch (possession) {
+            case RED -> Material.RED_WOOL;
+            case BLUE -> Material.BLUE_WOOL;
+            case null -> Material.GRAY_WOOL;
+        };
+        ball.setEquipped(new ItemStack(material));
     }
 
     private void resetRally() {
@@ -458,6 +529,9 @@ public final class BallManager {
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (ball != null && ball.isValid()) {
                 resetToServe(team);
+            }
+            if (gameManager != null) {
+                gameManager.teleportToPositions();
             }
         });
     }

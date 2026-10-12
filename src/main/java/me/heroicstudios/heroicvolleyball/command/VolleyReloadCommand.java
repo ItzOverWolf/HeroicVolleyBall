@@ -19,6 +19,7 @@ public final class VolleyReloadCommand implements CommandExecutor {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         plugin.reloadConfig();
+        plugin.syncConfigDefaults();
         plugin.getArenaManager().load();
         plugin.getBallManager().loadConfig();
         plugin.getScoreManager().loadConfig();

@@ -3,16 +3,22 @@ package me.heroicstudios.heroicvolleyball;
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
 import me.heroicstudios.heroicvolleyball.ball.BallListener;
 import me.heroicstudios.heroicvolleyball.ball.BallManager;
+import me.heroicstudios.heroicvolleyball.command.PartyCommand;
+import me.heroicstudios.heroicvolleyball.command.RestartGameCommand;
 import me.heroicstudios.heroicvolleyball.command.SetArenaCommand;
 import me.heroicstudios.heroicvolleyball.command.SpawnBallCommand;
 import me.heroicstudios.heroicvolleyball.command.StartGameCommand;
+import me.heroicstudios.heroicvolleyball.command.StopGameCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyGiveCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyMusicCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyReloadCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyWandCommand;
+import me.heroicstudios.heroicvolleyball.game.GameManager;
+import me.heroicstudios.heroicvolleyball.game.SetupGui;
 import me.heroicstudios.heroicvolleyball.gui.GuiListener;
 import me.heroicstudios.heroicvolleyball.listener.ArenaListener;
 import me.heroicstudios.heroicvolleyball.music.MusicManager;
+import me.heroicstudios.heroicvolleyball.party.PartyManager;
 import me.heroicstudios.heroicvolleyball.position.PositionManager;
 import me.heroicstudios.heroicvolleyball.score.ScoreManager;
 import me.heroicstudios.heroicvolleyball.tool.ToolListener;
@@ -20,7 +26,14 @@ import me.heroicstudios.heroicvolleyball.tool.ToolManager;
 import me.heroicstudios.heroicvolleyball.wand.WandListener;
 import me.heroicstudios.heroicvolleyball.wand.WandManager;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 public final class HeroicVolleyBall extends JavaPlugin {
 
@@ -29,6 +42,9 @@ public final class HeroicVolleyBall extends JavaPlugin {
     private PositionManager positionManager;
     private GuiListener guiListener;
     private ToolManager toolManager;
+    private PartyManager partyManager;
+    private GameManager gameManager;
+    private SetupGui setupGui;
     private BallManager ballManager;
     private ScoreManager scoreManager;
     private MusicManager musicManager;
@@ -36,21 +52,27 @@ public final class HeroicVolleyBall extends JavaPlugin {
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        syncConfigDefaults();
 
         this.arenaManager = new ArenaManager(this);
         this.positionManager = new PositionManager(this);
         this.wandManager = new WandManager(this);
         this.guiListener = new GuiListener(positionManager);
         this.toolManager = new ToolManager(this);
+        this.partyManager = new PartyManager(this);
+        this.gameManager = new GameManager(this, arenaManager, positionManager, toolManager, partyManager);
         this.musicManager = new MusicManager(this);
         this.scoreManager = new ScoreManager(this, arenaManager, musicManager);
-        this.ballManager = new BallManager(this, arenaManager, scoreManager);
+        this.ballManager = new BallManager(this, arenaManager, scoreManager, gameManager);
+        this.gameManager.bind(ballManager, scoreManager, musicManager);
+        this.setupGui = new SetupGui(this, gameManager, partyManager, positionManager);
 
         getServer().getPluginManager().registerEvents(new WandListener(wandManager), this);
         getServer().getPluginManager().registerEvents(new ArenaListener(arenaManager), this);
         getServer().getPluginManager().registerEvents(guiListener, this);
         getServer().getPluginManager().registerEvents(new ToolListener(toolManager), this);
         getServer().getPluginManager().registerEvents(new BallListener(ballManager, toolManager), this);
+        getServer().getPluginManager().registerEvents(setupGui, this);
         getServer().getPluginManager().registerEvents(scoreManager, this);
         scoreManager.applyAll();
 
@@ -67,8 +89,19 @@ public final class HeroicVolleyBall extends JavaPlugin {
         }
 
         register("spawnball", new SpawnBallCommand(ballManager));
-        register("startgame", new StartGameCommand(ballManager, scoreManager, musicManager));
+        register("startgame", new StartGameCommand(partyManager, setupGui, ballManager, scoreManager, musicManager));
+        register("stopgame", new StopGameCommand(ballManager, scoreManager, musicManager, gameManager));
+        register("restartgame", new RestartGameCommand(ballManager, scoreManager, musicManager, gameManager));
         register("volleyreload", new VolleyReloadCommand(this));
+
+        PartyCommand partyCommand = new PartyCommand(partyManager);
+        for (String name : new String[]{"partycreate", "partyinvite", "partyleave", "partydisband"}) {
+            PluginCommand party = getCommand(name);
+            if (party != null) {
+                party.setExecutor(partyCommand);
+                party.setTabCompleter(partyCommand);
+            }
+        }
 
         VolleyMusicCommand volleyMusicCommand = new VolleyMusicCommand(musicManager);
         PluginCommand volleyMusic = getCommand("volleymusic");
@@ -85,8 +118,31 @@ public final class HeroicVolleyBall extends JavaPlugin {
         }
     }
 
-    private void register(String name, org.bukkit.command.CommandExecutor executor) {
-        PluginCommand command = getCommand(name);
+    public void syncConfigDefaults() {
+        try (InputStream in = getResource("config.yml")) {
+            if (in == null) {
+                return;
+            }
+            YamlConfiguration defaults = YamlConfiguration.loadConfiguration(
+                    new InputStreamReader(in, StandardCharsets.UTF_8));
+            FileConfiguration config = getConfig();
+            boolean changed = false;
+            for (String key : defaults.getKeys(true)) {
+                if (defaults.isConfigurationSection(key) || config.contains(key)) {
+                    continue;
+                }
+                config.set(key, defaults.get(key));
+                changed = true;
+            }
+            if (changed) {
+                saveConfig();
+            }
+        } catch (IOException e) {
+            getLogger().warning("Could not sync missing config defaults: " + e.getMessage());
+        }
+    }
+
+    private void register(String name, org.bukkit.command.CommandExecutor executor) {        PluginCommand command = getCommand(name);
         if (command != null) {
             command.setExecutor(executor);
         }
@@ -94,6 +150,9 @@ public final class HeroicVolleyBall extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (gameManager != null) {
+            gameManager.shutdown();
+        }
         if (ballManager != null) {
             ballManager.shutdown();
         }
@@ -138,5 +197,17 @@ public final class HeroicVolleyBall extends JavaPlugin {
 
     public MusicManager getMusicManager() {
         return musicManager;
+    }
+
+    public PartyManager getPartyManager() {
+        return partyManager;
+    }
+
+    public GameManager getGameManager() {
+        return gameManager;
+    }
+
+    public SetupGui getSetupGui() {
+        return setupGui;
     }
 }

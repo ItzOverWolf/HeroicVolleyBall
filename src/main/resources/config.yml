@@ -4,6 +4,8 @@ arenas: {}
 
 # Ball physics and rule settings. Reload live with /volleyreload.
 ball:
+  # Size of the sulfur cube ball (1 = small, 2 = default, ...).
+  size: 2
   # Maximum number of touches a team gets per possession.
   max-touches: 3
   # Downward acceleration applied to the ball every tick (blocks/tick^2).
@@ -14,8 +16,18 @@ ball:
   velocity-scale: 1.0
   # Maximum speed any component of the ball may reach.
   max-velocity: 3.0
-  # Downward speed applied when a sword spike lands from above.
-  spike-downward: 0.8
+  # Sword spike behaviour, decided by where the player hits relative to the ball.
+  spike:
+    # Vertical gap (blocks) above/below the ball before a hit counts as top/bottom.
+    vertical-threshold: 1.0
+    # Speed used when spiking down from above (fastest).
+    top-down: 1.5
+    # Horizontal speed retained on a top-down spike (0 = straight down).
+    top-horizontal: 0.25
+    # Upward speed added on a level hit; gravity then arcs it down.
+    straight: 0.2
+    # Upward speed added when hitting from below, bouncing it up and forward.
+    up: 0.7
   # Downward speed applied when the ball is hit with a shield.
   shield-deflect: 0.9
   # Fraction of downward speed kept as a bounce when the ball lands (0 = none).
@@ -37,6 +49,15 @@ game:
   points-per-set: 25
   # Sets a team needs to win the match (best of 2 * sets-to-win - 1).
   sets-to-win: 2
+  # If true, hitting the ball while it is over the opponent's half gives the
+  # opponent a point. The neutral gray ball (over the net / flying out of bounds)
+  # is always free to touch and never causes this penalty.
+  opponent-touch-penalty: true
+
+# Party settings for multiplayer games.
+party:
+  # Maximum number of players a party can hold (must be even to start a game).
+  max-size: 12
 
 # Note Block Studio (.nbs) music played during matches.
 # Drop your .nbs files into plugins/HeroicVolleyBall/music/ and set the file below.
