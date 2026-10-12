@@ -62,6 +62,7 @@ public final class ToolManager {
             lore.add(loreLine("Tier: " + tier.getDisplayName(), tier.getColor()));
             lore.add(loreLine("Hit the ball to spike it forward", NamedTextColor.GRAY));
             lore.add(loreLine("Aim downward from above for a spike", NamedTextColor.DARK_GRAY));
+            lore.add(loreLine("Sneak + right-click to cycle power", NamedTextColor.DARK_GRAY));
         } else {
             lore.add(loreLine("Hit the ball with your shield to drive it down", NamedTextColor.GRAY));
         }
@@ -118,12 +119,21 @@ public final class ToolManager {
         }
     }
 
-    public void cycleShovelTier(Player player) {
+    public void cycleTier(Player player) {
         ItemStack item = player.getInventory().getItemInMainHand();
+        VolleyTool tool = getTool(item);
+        if (tool == null || !isCycleable(tool)) {
+            return;
+        }
         VolleyTier next = getTier(item).next();
-        player.getInventory().setItemInMainHand(create(VolleyTool.SHOVEL, next));
-        player.sendMessage(Component.text("Up power set to ", NamedTextColor.GRAY)
+        player.getInventory().setItemInMainHand(create(tool, next));
+        String label = tool == VolleyTool.SWORD ? "Spike" : "Up";
+        player.sendMessage(Component.text(label + " power set to ", NamedTextColor.GRAY)
                 .append(Component.text(next.getDisplayName(), next.getColor())));
+    }
+
+    public boolean isCycleable(VolleyTool tool) {
+        return tool == VolleyTool.SHOVEL || tool == VolleyTool.SWORD;
     }
 
     private Component loreLine(String text, NamedTextColor color) {

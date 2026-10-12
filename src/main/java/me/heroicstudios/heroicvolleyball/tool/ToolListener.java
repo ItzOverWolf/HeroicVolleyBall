@@ -33,11 +33,12 @@ public final class ToolListener implements Listener {
         }
 
         ItemStack item = player.getInventory().getItemInMainHand();
-        if (toolManager.getTool(item) != VolleyTool.SHOVEL) {
+        VolleyTool tool = toolManager.getTool(item);
+        if (tool == null || !toolManager.isCycleable(tool)) {
             return;
         }
 
         event.setCancelled(true);
-        toolManager.cycleShovelTier(player);
+        toolManager.cycleTier(player);
     }
 }
