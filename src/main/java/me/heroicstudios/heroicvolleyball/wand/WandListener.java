@@ -54,13 +54,17 @@ public final class WandListener implements Listener {
             }
         } else if (action == Action.RIGHT_CLICK_BLOCK) {
             event.setCancelled(true);
-            wandManager.setSecondPoint(player.getUniqueId(), block.getLocation());
+            if (player.isSneaking()) {
+                wandManager.openPositionMenu(player, block.getLocation());
+            } else {
+                wandManager.setSecondPoint(player.getUniqueId(), block.getLocation());
 
-            player.sendMessage(Component.text("Point 2 set to ", NamedTextColor.GRAY)
-                    .append(Component.text(locationString(block), NamedTextColor.AQUA)));
+                player.sendMessage(Component.text("Point 2 set to ", NamedTextColor.GRAY)
+                        .append(Component.text(locationString(block), NamedTextColor.AQUA)));
 
-            if (wandManager.hasCompleteSelection(player.getUniqueId())) {
-                player.sendMessage(Component.text("Both points set! Use /setarena <red|blue>.", NamedTextColor.GREEN));
+                if (wandManager.hasCompleteSelection(player.getUniqueId())) {
+                    player.sendMessage(Component.text("Both points set! Use /setarena <red|blue>.", NamedTextColor.GREEN));
+                }
             }
         }
     }

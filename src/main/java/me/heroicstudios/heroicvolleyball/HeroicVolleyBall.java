@@ -3,7 +3,9 @@ package me.heroicstudios.heroicvolleyball;
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
 import me.heroicstudios.heroicvolleyball.command.SetArenaCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyWandCommand;
+import me.heroicstudios.heroicvolleyball.gui.GuiListener;
 import me.heroicstudios.heroicvolleyball.listener.ArenaListener;
+import me.heroicstudios.heroicvolleyball.position.PositionManager;
 import me.heroicstudios.heroicvolleyball.wand.WandListener;
 import me.heroicstudios.heroicvolleyball.wand.WandManager;
 import org.bukkit.command.PluginCommand;
@@ -13,16 +15,21 @@ public final class HeroicVolleyBall extends JavaPlugin {
 
     private ArenaManager arenaManager;
     private WandManager wandManager;
+    private PositionManager positionManager;
+    private GuiListener guiListener;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
 
         this.arenaManager = new ArenaManager(this);
+        this.positionManager = new PositionManager(this);
         this.wandManager = new WandManager(this);
+        this.guiListener = new GuiListener(positionManager);
 
         getServer().getPluginManager().registerEvents(new WandListener(wandManager), this);
         getServer().getPluginManager().registerEvents(new ArenaListener(arenaManager), this);
+        getServer().getPluginManager().registerEvents(guiListener, this);
 
         PluginCommand volleyWandCommand = getCommand("volleywand");
         if (volleyWandCommand != null) {
@@ -50,5 +57,13 @@ public final class HeroicVolleyBall extends JavaPlugin {
 
     public WandManager getWandManager() {
         return wandManager;
+    }
+
+    public PositionManager getPositionManager() {
+        return positionManager;
+    }
+
+    public GuiListener getGuiListener() {
+        return guiListener;
     }
 }
