@@ -3,6 +3,7 @@ package me.heroicstudios.heroicvolleyball.ball;
 import java.util.concurrent.ThreadLocalRandom;
 
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
+import me.heroicstudios.heroicvolleyball.arena.Arena;
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
 import me.heroicstudios.heroicvolleyball.arena.Team;
 import me.heroicstudios.heroicvolleyball.position.PositionManager;
@@ -45,6 +46,8 @@ public final class BallManager {
     private double maxVelocity = 3.0;
     private double spikeDownward = 0.8;
     private double shieldDeflect = 0.9;
+    private double bounceFactor = 0.3;
+    private double settleThreshold = 0.12;
     private double shovelWooden = 0.6;
     private double shovelIron = 0.9;
     private double shovelDiamond = 1.2;
@@ -73,6 +76,7 @@ public final class BallManager {
         this.maxVelocity = config.getDouble("ball.max-velocity", 3.0);
         this.spikeDownward = config.getDouble("ball.spike-downward", 0.8);
         this.shieldDeflect = config.getDouble("ball.shield-deflect", 0.9);
+        this.bounceFactor = config.getDouble("ball.bounce", 0.3);
         this.shovelWooden = config.getDouble("ball.power.shovel.wooden", 0.6);
         this.shovelIron = config.getDouble("ball.power.shovel.iron", 0.9);
         this.shovelDiamond = config.getDouble("ball.power.shovel.diamond", 1.2);
@@ -106,6 +110,12 @@ public final class BallManager {
             }
         }
         if (base == null) {
+            base = arenaCenterFloor(Team.RED);
+        }
+        if (base == null) {
+            base = arenaCenterFloor(Team.BLUE);
+        }
+        if (base == null) {
             return false;
         }
 
@@ -123,6 +133,27 @@ public final class BallManager {
         );
         spawnBall(spawn);
         return true;
+    }
+
+    private @Nullable Location arenaCenterFloor(Team team) {
+        Arena arena = arenaManager.getArena(team);
+        if (arena == null) {
+            return null;
+        }
+        World world = Bukkit.getWorld(arena.getWorld());
+        if (world == null) {
+            return null;
+        }
+        int x = (arena.getMinX() + arena.getMaxX()) / 2;
+        int z = (arena.getMinZ() + arena.getMaxZ()) / 2;
+        int floorY = arena.getMinY();
+        for (int y = arena.getMaxY(); y >= arena.getMinY() - 1; y--) {
+            if (!world.getBlockAt(x, y, z).isPassable()) {
+                floorY = y + 1;
+                break;
+            }
+        }
+        return new Location(world, x + 0.5, floorY, z + 0.5);
     }
 
     public void spawnBall(Location location) {
@@ -170,8 +201,10 @@ public final class BallManager {
 
         if (tool == VolleyTool.SHOVEL) {
             bump(tier);
-        } else if (tool == VolleyTool.SPEAR) {
+        } else if (tool == VolleyTool.SWORD) {
             spike(player, tier);
+        } else if (tool == VolleyTool.SHIELD) {
+            block();
         }
     }
 
@@ -237,7 +270,6 @@ public final class BallManager {
         }
 
         integrate();
-        handleShield();
         updatePossession();
         step();
         updateName();
@@ -279,7 +311,8 @@ public final class BallManager {
 
         if (onGround) {
             if (motion.getY() < 0.0) {
-                motion.setY(0.0);
+                double bounce = -motion.getY() * bounceFactor;
+                motion.setY(bounce < settleThreshold ? 0.0 : bounce);
             }
             motion.setX(motion.getX() * 0.5);
             motion.setZ(motion.getZ() * 0.5);
@@ -294,19 +327,12 @@ public final class BallManager {
         ball.teleport(next);
     }
 
-    private void handleShield() {
-        for (Player player : current.getWorld().getPlayers()) {
-            if (player.getLocation().distanceSquared(current) > 4.0) {
-                continue;
-            }
-            if (!player.isBlocking()) {
-                continue;
-            }
-            motion.setX(motion.getX() * 0.2);
-            motion.setZ(motion.getZ() * 0.2);
-            motion.setY(-shieldDeflect * velocityScale);
-            break;
-        }
+    private void block() {
+        motion.setX(motion.getX() * 0.2);
+        motion.setZ(motion.getZ() * 0.2);
+        motion.setY(-shieldDeflect * velocityScale);
+        wasOnGround = false;
+        updateName();
     }
 
     private void updatePossession() {
@@ -321,7 +347,6 @@ public final class BallManager {
     private void resetRally() {
         state = State.IDLE;
         touches = maxTouches;
-        motion = new Vector();
     }
 
     private void clamp(Vector vector) {

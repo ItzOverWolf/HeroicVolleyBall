@@ -14,10 +14,12 @@ ball:
   velocity-scale: 1.0
   # Maximum speed any component of the ball may reach.
   max-velocity: 3.0
-  # Downward speed applied when a spear spike lands from above.
+  # Downward speed applied when a sword spike lands from above.
   spike-downward: 0.8
-  # Downward speed applied when the ball touches a blocking shield.
+  # Downward speed applied when the ball is hit with a shield.
   shield-deflect: 0.9
+  # Fraction of downward speed kept as a bounce when the ball lands (0 = none).
+  bounce: 0.3
   # Per-tier tool power.
   power:
     shovel:

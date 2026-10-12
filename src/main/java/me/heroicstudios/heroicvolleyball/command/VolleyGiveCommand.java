@@ -32,13 +32,13 @@ public final class VolleyGiveCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length < 1) {
-            player.sendMessage(Component.text("Usage: /" + label + " <shovel|spear|shield> [tier]", NamedTextColor.RED));
+            player.sendMessage(Component.text("Usage: /" + label + " <shovel|sword|shield> [tier]", NamedTextColor.RED));
             return true;
         }
 
         VolleyTool tool = VolleyTool.fromString(args[0]);
         if (tool == null) {
-            player.sendMessage(Component.text("Unknown tool \"" + args[0] + "\". Use shovel, spear or shield.", NamedTextColor.RED));
+            player.sendMessage(Component.text("Unknown tool \"" + args[0] + "\". Use shovel, sword or shield.", NamedTextColor.RED));
             return true;
         }
 

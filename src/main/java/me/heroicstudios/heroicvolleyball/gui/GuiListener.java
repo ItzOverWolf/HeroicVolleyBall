@@ -102,12 +102,12 @@ public final class GuiListener implements Listener {
 
     private int getPositionNumber(int slot) {
         switch (slot) {
-            case 10: return 4;
-            case 11: return 3;
-            case 12: return 2;
-            case 14: return 5;
-            case 15: return 6;
-            case 16: return 1;
+            case 11: return 4;
+            case 13: return 3;
+            case 15: return 2;
+            case 29: return 5;
+            case 31: return 6;
+            case 33: return 1;
             default: return -1;
         }
     }

@@ -24,7 +24,7 @@ commands:
     permission: heroicvolleyball.startgame
   volleygive:
     description: Gives a volleyball tool
-    usage: /volleygive <shovel|spear|shield> [wooden|iron|diamond]
+    usage: /volleygive <shovel|sword|shield> [wooden|iron|diamond]
     permission: heroicvolleyball.volleygive
   volleyreload:
     description: Reloads the HeroicVolleyBall configuration

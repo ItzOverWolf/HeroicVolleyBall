@@ -37,8 +37,8 @@ public final class ToolManager {
                 displayName = "Up";
                 color = tier.getColor();
             }
-            case SPEAR -> {
-                material = spearMaterial(tier);
+            case SWORD -> {
+                material = swordMaterial(tier);
                 displayName = "Spike";
                 color = NamedTextColor.RED;
             }
@@ -58,12 +58,12 @@ public final class ToolManager {
             lore.add(loreLine("Tier: " + tier.getDisplayName(), tier.getColor()));
             lore.add(loreLine("Hit the ball to launch it straight up", NamedTextColor.GRAY));
             lore.add(loreLine("Sneak + right-click to cycle power", NamedTextColor.DARK_GRAY));
-        } else if (tool == VolleyTool.SPEAR) {
+        } else if (tool == VolleyTool.SWORD) {
             lore.add(loreLine("Tier: " + tier.getDisplayName(), tier.getColor()));
             lore.add(loreLine("Hit the ball to spike it forward", NamedTextColor.GRAY));
             lore.add(loreLine("Aim downward from above for a spike", NamedTextColor.DARK_GRAY));
         } else {
-            lore.add(loreLine("Hold to block the ball downward", NamedTextColor.GRAY));
+            lore.add(loreLine("Hit the ball with your shield to drive it down", NamedTextColor.GRAY));
         }
         meta.lore(lore);
         meta.setUnbreakable(true);
@@ -138,11 +138,11 @@ public final class ToolManager {
         };
     }
 
-    private Material spearMaterial(VolleyTier tier) {
+    private Material swordMaterial(VolleyTier tier) {
         return switch (tier) {
-            case WOODEN -> Material.WOODEN_SPEAR;
-            case IRON -> Material.IRON_SPEAR;
-            case DIAMOND -> Material.DIAMOND_SPEAR;
+            case WOODEN -> Material.WOODEN_SWORD;
+            case IRON -> Material.IRON_SWORD;
+            case DIAMOND -> Material.DIAMOND_SWORD;
         };
     }
 }
