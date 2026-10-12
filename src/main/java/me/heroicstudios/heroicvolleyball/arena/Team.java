@@ -24,6 +24,10 @@ public enum Team {
         return color;
     }
 
+    public Team opposite() {
+        return this == RED ? BLUE : RED;
+    }
+
     public static @Nullable Team fromString(String input) {
         for (Team team : values()) {
             if (team.name().equalsIgnoreCase(input)) {

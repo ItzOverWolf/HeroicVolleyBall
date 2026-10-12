@@ -21,6 +21,7 @@ public final class VolleyReloadCommand implements CommandExecutor {
         plugin.reloadConfig();
         plugin.getArenaManager().load();
         plugin.getBallManager().loadConfig();
+        plugin.getScoreManager().loadConfig();
         sender.sendMessage(Component.text("HeroicVolleyBall configuration reloaded.", NamedTextColor.GREEN));
         return true;
     }

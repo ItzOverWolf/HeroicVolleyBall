@@ -7,13 +7,16 @@ import me.heroicstudios.heroicvolleyball.arena.Arena;
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
 import me.heroicstudios.heroicvolleyball.arena.Team;
 import me.heroicstudios.heroicvolleyball.position.PositionManager;
+import me.heroicstudios.heroicvolleyball.score.ScoreManager;
 import me.heroicstudios.heroicvolleyball.tool.VolleyTier;
 import me.heroicstudios.heroicvolleyball.tool.VolleyTool;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
@@ -26,6 +29,10 @@ import org.jetbrains.annotations.Nullable;
 
 public final class BallManager {
 
+    private static final double BALL_RADIUS = 0.45;
+    private static final double BALL_HEIGHT = 1.6;
+    private static final double COLLISION_STEP = 0.1;
+
     private enum State {
         IDLE,
         RALLY
@@ -33,6 +40,7 @@ public final class BallManager {
 
     private final HeroicVolleyBall plugin;
     private final ArenaManager arenaManager;
+    private final ScoreManager scoreManager;
 
     private @Nullable SulfurCube ball;
     private @Nullable Location current;
@@ -59,11 +67,13 @@ public final class BallManager {
     private int touches = 3;
     private boolean wasOnGround = true;
     private @Nullable Team possession;
+    private @Nullable Team lastHitter;
     private int lastHitTick = -100;
 
-    public BallManager(HeroicVolleyBall plugin, ArenaManager arenaManager) {
+    public BallManager(HeroicVolleyBall plugin, ArenaManager arenaManager, ScoreManager scoreManager) {
         this.plugin = plugin;
         this.arenaManager = arenaManager;
+        this.scoreManager = scoreManager;
         loadConfig();
     }
 
@@ -101,19 +111,17 @@ public final class BallManager {
     }
 
     public boolean spawnAtStart() {
+        return resetToServe(Team.RED) || resetToServe(Team.BLUE);
+    }
+
+    public boolean resetToServe(Team team) {
         PositionManager positionManager = plugin.getPositionManager();
         Location base = null;
         if (positionManager != null) {
-            base = positionManager.getPosition(Team.RED, 6);
-            if (base == null) {
-                base = positionManager.getPosition(Team.BLUE, 6);
-            }
+            base = positionManager.getPosition(team, 6);
         }
         if (base == null) {
-            base = arenaCenterFloor(Team.RED);
-        }
-        if (base == null) {
-            base = arenaCenterFloor(Team.BLUE);
+            base = arenaCenterFloor(team);
         }
         if (base == null) {
             return false;
@@ -185,6 +193,7 @@ public final class BallManager {
         this.wasOnGround = true;
         this.lastHitTick = -100;
         this.possession = arenaManager.getArenaAt(location);
+        this.lastHitter = null;
         updateName();
         startTask();
     }
@@ -199,8 +208,13 @@ public final class BallManager {
         }
         lastHitTick = now;
 
+        Team hitter = arenaManager.getArenaAt(player.getLocation());
+        if (hitter != null) {
+            lastHitter = hitter;
+        }
+
         if (tool == VolleyTool.SHOVEL) {
-            bump(tier);
+            bump(player, tier);
         } else if (tool == VolleyTool.SWORD) {
             spike(player, tier);
         } else if (tool == VolleyTool.SHIELD) {
@@ -208,7 +222,7 @@ public final class BallManager {
         }
     }
 
-    private void bump(VolleyTier tier) {
+    private void bump(Player player, VolleyTier tier) {
         if (state == State.RALLY && touches <= 0) {
             return;
         }
@@ -222,6 +236,13 @@ public final class BallManager {
         motion = new Vector(0.0, power, 0.0);
         wasOnGround = false;
         updateName();
+
+        if (current != null) {
+            current.getWorld().playSound(current, Sound.BLOCK_WOOL_PLACE, 1.0f, 1.2f);
+        }
+        player.showTitle(Title.title(
+                Component.text("BUMP", NamedTextColor.GREEN),
+                Component.text("Ball Up", NamedTextColor.GRAY)));
     }
 
     private void spike(Player player, VolleyTier tier) {
@@ -261,6 +282,11 @@ public final class BallManager {
         motion = velocity;
         wasOnGround = false;
         updateName();
+
+        current.getWorld().playSound(current, Sound.BLOCK_WOOL_BREAK, 1.0f, 0.9f);
+        player.showTitle(Title.title(
+                Component.text("SPIKE", NamedTextColor.RED),
+                Component.text("Ball Spike", NamedTextColor.GRAY)));
     }
 
     private void tick() {
@@ -287,44 +313,114 @@ public final class BallManager {
         }
 
         clamp(motion);
-        Location next = current.clone().add(motion);
 
-        int blockX = next.getBlockX();
-        int blockZ = next.getBlockZ();
-        int startY = (int) Math.floor(next.getY());
+        moveHorizontal(world, motion.getX(), 0);
+        moveHorizontal(world, motion.getZ(), 2);
 
-        int floorTop = Integer.MIN_VALUE;
-        for (int y = startY; y >= startY - 4; y--) {
-            if (!world.getBlockAt(blockX, y, blockZ).isPassable()) {
-                floorTop = y + 1;
-                break;
+        boolean hitFloor = false;
+        double vy = motion.getY();
+        if (vy != 0.0) {
+            int steps = substeps(vy);
+            double increment = vy / steps;
+            for (int i = 0; i < steps; i++) {
+                Location candidate = current.clone();
+                candidate.setY(candidate.getY() + increment);
+                if (collides(world, candidate)) {
+                    if (vy < 0.0) {
+                        hitFloor = true;
+                        current.setY(Math.floor(candidate.getY()) + 1.0);
+                    }
+                    double bounce = -vy * bounceFactor;
+                    motion.setY(Math.abs(bounce) < settleThreshold ? 0.0 : bounce);
+                    break;
+                }
+                current = candidate;
             }
         }
 
-        boolean onGround = false;
-        if (floorTop != Integer.MIN_VALUE
-                && next.getY() <= floorTop
-                && current.getY() >= floorTop - 0.6) {
-            next.setY(floorTop);
-            onGround = true;
-        }
-
+        boolean onGround = hitFloor || grounded(world);
         if (onGround) {
-            if (motion.getY() < 0.0) {
-                double bounce = -motion.getY() * bounceFactor;
-                motion.setY(bounce < settleThreshold ? 0.0 : bounce);
-            }
             motion.setX(motion.getX() * 0.5);
             motion.setZ(motion.getZ() * 0.5);
 
             if (state == State.RALLY && !wasOnGround) {
+                Team scorer = awardPoint();
                 resetRally();
+                if (scorer != null) {
+                    scheduleServeReset(scorer);
+                }
             }
         }
 
         wasOnGround = onGround;
-        current = next;
-        ball.teleport(next);
+        ball.teleport(current);
+    }
+
+    private void moveHorizontal(World world, double amount, int axis) {
+        if (amount == 0.0) {
+            return;
+        }
+        int steps = substeps(amount);
+        double increment = amount / steps;
+        for (int i = 0; i < steps; i++) {
+            Location candidate = current.clone();
+            if (axis == 0) {
+                candidate.setX(candidate.getX() + increment);
+            } else {
+                candidate.setZ(candidate.getZ() + increment);
+            }
+            if (collides(world, candidate)) {
+                double bounce = -amount * bounceFactor;
+                if (axis == 0) {
+                    motion.setX(bounce);
+                } else {
+                    motion.setZ(bounce);
+                }
+                return;
+            }
+            current = candidate;
+        }
+    }
+
+    private int substeps(double amount) {
+        return Math.max(1, (int) Math.ceil(Math.abs(amount) / COLLISION_STEP));
+    }
+
+    private boolean grounded(World world) {
+        Location below = current.clone();
+        below.setY(below.getY() - 0.05);
+        return collides(world, below);
+    }
+
+    private boolean collides(World world, Location location) {
+        double minX = location.getX() - BALL_RADIUS;
+        double maxX = location.getX() + BALL_RADIUS;
+        double minY = location.getY();
+        double maxY = location.getY() + BALL_HEIGHT;
+        double minZ = location.getZ() - BALL_RADIUS;
+        double maxZ = location.getZ() + BALL_RADIUS;
+
+        int x0 = (int) Math.floor(minX);
+        int x1 = (int) Math.floor(maxX);
+        int y0 = (int) Math.floor(minY);
+        int y1 = (int) Math.floor(maxY);
+        int z0 = (int) Math.floor(minZ);
+        int z1 = (int) Math.floor(maxZ);
+
+        if (!world.isChunkLoaded(x0 >> 4, z0 >> 4) || !world.isChunkLoaded(x1 >> 4, z1 >> 4)) {
+            return false;
+        }
+
+        for (int x = x0; x <= x1; x++) {
+            for (int y = y0; y <= y1; y++) {
+                for (int z = z0; z <= z1; z++) {
+                    if (!world.getBlockAt(x, y, z).isPassable()) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private void block() {
@@ -347,6 +443,26 @@ public final class BallManager {
     private void resetRally() {
         state = State.IDLE;
         touches = maxTouches;
+    }
+
+    private @Nullable Team awardPoint() {
+        if (scoreManager == null || lastHitter == null) {
+            return null;
+        }
+
+        Team landingTeam = arenaManager.getArenaAt(current);
+        boolean landedOnOpponent = landingTeam != null && landingTeam != lastHitter;
+        Team scorer = landedOnOpponent ? lastHitter : lastHitter.opposite();
+        scoreManager.addPoint(scorer);
+        return scorer;
+    }
+
+    private void scheduleServeReset(Team team) {
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (ball != null && ball.isValid()) {
+                resetToServe(team);
+            }
+        });
     }
 
     private void clamp(Vector vector) {

@@ -9,6 +9,7 @@ import me.heroicstudios.heroicvolleyball.arena.Team;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
+import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -48,12 +49,14 @@ public final class ArenaListener implements Listener {
 
         if (current == null) {
             currentArenas.remove(uuid);
-            player.sendMessage(Component.text("You're out of the arena!", NamedTextColor.YELLOW));
+            player.sendActionBar(Component.text("You're out of the arena!", NamedTextColor.YELLOW));
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.6f, 1.2f);
         } else {
             currentArenas.put(uuid, current);
-            player.sendMessage(Component.text("You're in the ", NamedTextColor.GRAY)
+            player.sendActionBar(Component.text("You're in the ", NamedTextColor.GRAY)
                     .append(Component.text(current.getDisplayName(), current.getColor()))
                     .append(Component.text(" team's arena", NamedTextColor.GRAY)));
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.6f, 1.6f);
         }
     }
 

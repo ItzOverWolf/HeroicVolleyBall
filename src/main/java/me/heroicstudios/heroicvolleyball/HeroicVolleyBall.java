@@ -12,6 +12,7 @@ import me.heroicstudios.heroicvolleyball.command.VolleyWandCommand;
 import me.heroicstudios.heroicvolleyball.gui.GuiListener;
 import me.heroicstudios.heroicvolleyball.listener.ArenaListener;
 import me.heroicstudios.heroicvolleyball.position.PositionManager;
+import me.heroicstudios.heroicvolleyball.score.ScoreManager;
 import me.heroicstudios.heroicvolleyball.tool.ToolListener;
 import me.heroicstudios.heroicvolleyball.tool.ToolManager;
 import me.heroicstudios.heroicvolleyball.wand.WandListener;
@@ -27,6 +28,7 @@ public final class HeroicVolleyBall extends JavaPlugin {
     private GuiListener guiListener;
     private ToolManager toolManager;
     private BallManager ballManager;
+    private ScoreManager scoreManager;
 
     @Override
     public void onEnable() {
@@ -37,13 +39,16 @@ public final class HeroicVolleyBall extends JavaPlugin {
         this.wandManager = new WandManager(this);
         this.guiListener = new GuiListener(positionManager);
         this.toolManager = new ToolManager(this);
-        this.ballManager = new BallManager(this, arenaManager);
+        this.scoreManager = new ScoreManager(this, arenaManager);
+        this.ballManager = new BallManager(this, arenaManager, scoreManager);
 
         getServer().getPluginManager().registerEvents(new WandListener(wandManager), this);
         getServer().getPluginManager().registerEvents(new ArenaListener(arenaManager), this);
         getServer().getPluginManager().registerEvents(guiListener, this);
         getServer().getPluginManager().registerEvents(new ToolListener(toolManager), this);
         getServer().getPluginManager().registerEvents(new BallListener(ballManager, toolManager), this);
+        getServer().getPluginManager().registerEvents(scoreManager, this);
+        scoreManager.applyAll();
 
         PluginCommand volleyWandCommand = getCommand("volleywand");
         if (volleyWandCommand != null) {
@@ -58,7 +63,7 @@ public final class HeroicVolleyBall extends JavaPlugin {
         }
 
         register("spawnball", new SpawnBallCommand(ballManager));
-        register("startgame", new StartGameCommand(ballManager));
+        register("startgame", new StartGameCommand(ballManager, scoreManager));
         register("volleyreload", new VolleyReloadCommand(this));
 
         VolleyGiveCommand volleyGiveCommand = new VolleyGiveCommand(toolManager);
@@ -80,6 +85,9 @@ public final class HeroicVolleyBall extends JavaPlugin {
     public void onDisable() {
         if (ballManager != null) {
             ballManager.shutdown();
+        }
+        if (scoreManager != null) {
+            scoreManager.shutdown();
         }
         if (arenaManager != null) {
             arenaManager.save();
@@ -108,5 +116,9 @@ public final class HeroicVolleyBall extends JavaPlugin {
 
     public BallManager getBallManager() {
         return ballManager;
+    }
+
+    public ScoreManager getScoreManager() {
+        return scoreManager;
     }
 }

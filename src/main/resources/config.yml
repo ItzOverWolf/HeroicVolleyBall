@@ -30,3 +30,10 @@ ball:
       wooden: 1.0
       iron: 1.4
       diamond: 1.8
+
+# Match rules.
+game:
+  # Points a team needs to win a single set.
+  points-per-set: 25
+  # Sets a team needs to win the match (best of 2 * sets-to-win - 1).
+  sets-to-win: 2
