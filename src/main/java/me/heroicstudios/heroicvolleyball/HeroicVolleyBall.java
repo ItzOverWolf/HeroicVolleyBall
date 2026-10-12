@@ -7,10 +7,12 @@ import me.heroicstudios.heroicvolleyball.command.SetArenaCommand;
 import me.heroicstudios.heroicvolleyball.command.SpawnBallCommand;
 import me.heroicstudios.heroicvolleyball.command.StartGameCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyGiveCommand;
+import me.heroicstudios.heroicvolleyball.command.VolleyMusicCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyReloadCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyWandCommand;
 import me.heroicstudios.heroicvolleyball.gui.GuiListener;
 import me.heroicstudios.heroicvolleyball.listener.ArenaListener;
+import me.heroicstudios.heroicvolleyball.music.MusicManager;
 import me.heroicstudios.heroicvolleyball.position.PositionManager;
 import me.heroicstudios.heroicvolleyball.score.ScoreManager;
 import me.heroicstudios.heroicvolleyball.tool.ToolListener;
@@ -29,6 +31,7 @@ public final class HeroicVolleyBall extends JavaPlugin {
     private ToolManager toolManager;
     private BallManager ballManager;
     private ScoreManager scoreManager;
+    private MusicManager musicManager;
 
     @Override
     public void onEnable() {
@@ -39,7 +42,8 @@ public final class HeroicVolleyBall extends JavaPlugin {
         this.wandManager = new WandManager(this);
         this.guiListener = new GuiListener(positionManager);
         this.toolManager = new ToolManager(this);
-        this.scoreManager = new ScoreManager(this, arenaManager);
+        this.musicManager = new MusicManager(this);
+        this.scoreManager = new ScoreManager(this, arenaManager, musicManager);
         this.ballManager = new BallManager(this, arenaManager, scoreManager);
 
         getServer().getPluginManager().registerEvents(new WandListener(wandManager), this);
@@ -63,8 +67,15 @@ public final class HeroicVolleyBall extends JavaPlugin {
         }
 
         register("spawnball", new SpawnBallCommand(ballManager));
-        register("startgame", new StartGameCommand(ballManager, scoreManager));
+        register("startgame", new StartGameCommand(ballManager, scoreManager, musicManager));
         register("volleyreload", new VolleyReloadCommand(this));
+
+        VolleyMusicCommand volleyMusicCommand = new VolleyMusicCommand(musicManager);
+        PluginCommand volleyMusic = getCommand("volleymusic");
+        if (volleyMusic != null) {
+            volleyMusic.setExecutor(volleyMusicCommand);
+            volleyMusic.setTabCompleter(volleyMusicCommand);
+        }
 
         VolleyGiveCommand volleyGiveCommand = new VolleyGiveCommand(toolManager);
         PluginCommand volleyGive = getCommand("volleygive");
@@ -85,6 +96,9 @@ public final class HeroicVolleyBall extends JavaPlugin {
     public void onDisable() {
         if (ballManager != null) {
             ballManager.shutdown();
+        }
+        if (musicManager != null) {
+            musicManager.shutdown();
         }
         if (scoreManager != null) {
             scoreManager.shutdown();
@@ -120,5 +134,9 @@ public final class HeroicVolleyBall extends JavaPlugin {
 
     public ScoreManager getScoreManager() {
         return scoreManager;
+    }
+
+    public MusicManager getMusicManager() {
+        return musicManager;
     }
 }

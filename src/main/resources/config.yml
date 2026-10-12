@@ -37,3 +37,10 @@ game:
   points-per-set: 25
   # Sets a team needs to win the match (best of 2 * sets-to-win - 1).
   sets-to-win: 2
+
+# Note Block Studio (.nbs) music played during matches.
+# Drop your .nbs files into plugins/HeroicVolleyBall/music/ and set the file below.
+music:
+  enabled: true
+  song: haikyuu.nbs
+  volume: 1.0

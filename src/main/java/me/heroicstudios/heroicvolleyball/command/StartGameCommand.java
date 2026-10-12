@@ -1,6 +1,7 @@
 package me.heroicstudios.heroicvolleyball.command;
 
 import me.heroicstudios.heroicvolleyball.ball.BallManager;
+import me.heroicstudios.heroicvolleyball.music.MusicManager;
 import me.heroicstudios.heroicvolleyball.score.ScoreManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -13,10 +14,12 @@ public final class StartGameCommand implements CommandExecutor {
 
     private final BallManager ballManager;
     private final ScoreManager scoreManager;
+    private final MusicManager musicManager;
 
-    public StartGameCommand(BallManager ballManager, ScoreManager scoreManager) {
+    public StartGameCommand(BallManager ballManager, ScoreManager scoreManager, MusicManager musicManager) {
         this.ballManager = ballManager;
         this.scoreManager = scoreManager;
+        this.musicManager = musicManager;
     }
 
     @Override
@@ -28,6 +31,7 @@ public final class StartGameCommand implements CommandExecutor {
             return true;
         }
 
+        musicManager.startDefault();
         sender.sendMessage(Component.text("The volleyball has been placed at Position 6. Use the shovel to serve!", NamedTextColor.GREEN));
         return true;
     }

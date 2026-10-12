@@ -30,6 +30,10 @@ commands:
     description: Reloads the HeroicVolleyBall configuration
     usage: /volleyreload
     permission: heroicvolleyball.volleyreload
+  volleymusic:
+    description: Plays Note Block Studio music for the game
+    usage: /volleymusic <start|stop|list|reload> [song]
+    permission: heroicvolleyball.volleymusic
 
 permissions:
   heroicvolleyball.volleywand:
@@ -49,4 +53,7 @@ permissions:
     default: op
   heroicvolleyball.volleyreload:
     description: Allows use of /volleyreload
+    default: op
+  heroicvolleyball.volleymusic:
+    description: Allows use of /volleymusic
     default: op

@@ -12,7 +12,6 @@ import me.heroicstudios.heroicvolleyball.tool.VolleyTier;
 import me.heroicstudios.heroicvolleyball.tool.VolleyTool;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -240,9 +239,8 @@ public final class BallManager {
         if (current != null) {
             current.getWorld().playSound(current, Sound.BLOCK_WOOL_PLACE, 1.0f, 1.2f);
         }
-        player.showTitle(Title.title(
-                Component.text("BUMP", NamedTextColor.GREEN),
-                Component.text("Ball Up", NamedTextColor.GRAY)));
+        player.sendActionBar(Component.text("BUMP  ", NamedTextColor.GREEN)
+                .append(Component.text("Ball Up", NamedTextColor.GRAY)));
     }
 
     private void spike(Player player, VolleyTier tier) {
@@ -284,9 +282,8 @@ public final class BallManager {
         updateName();
 
         current.getWorld().playSound(current, Sound.BLOCK_WOOL_BREAK, 1.0f, 0.9f);
-        player.showTitle(Title.title(
-                Component.text("SPIKE", NamedTextColor.RED),
-                Component.text("Ball Spike", NamedTextColor.GRAY)));
+        player.sendActionBar(Component.text("SPIKE  ", NamedTextColor.RED)
+                .append(Component.text("Ball Spike", NamedTextColor.GRAY)));
     }
 
     private void tick() {
