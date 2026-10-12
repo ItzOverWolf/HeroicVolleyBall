@@ -41,6 +41,15 @@ public final class PositionManager {
         plugin.saveConfig();
     }
 
+    public void saveFacing(Team team, float yaw) {
+        plugin.getConfig().set("facing." + team.name().toLowerCase(), yaw);
+        plugin.saveConfig();
+    }
+
+    public float getFacing(Team team) {
+        return (float) plugin.getConfig().getDouble("facing." + team.name().toLowerCase(), 0.0D);
+    }
+
     public @Nullable Location getPosition(Team team, int positionNumber) {
         String base = "positions." + team.name().toLowerCase() + ".position_" + positionNumber;
         String worldName = plugin.getConfig().getString(base + ".world");
@@ -57,7 +66,9 @@ public final class PositionManager {
                 world,
                 plugin.getConfig().getInt(base + ".x"),
                 plugin.getConfig().getInt(base + ".y"),
-                plugin.getConfig().getInt(base + ".z")
+                plugin.getConfig().getInt(base + ".z"),
+                getFacing(team),
+                0f
         );
     }
 

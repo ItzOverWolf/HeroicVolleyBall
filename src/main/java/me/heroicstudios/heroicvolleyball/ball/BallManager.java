@@ -64,6 +64,7 @@ public final class BallManager {
     private double shovelWooden = 0.6;
     private double shovelIron = 0.9;
     private double shovelDiamond = 1.2;
+    private double shovelForward = 0.25;
     private double spikeWooden = 1.0;
     private double spikeIron = 1.4;
     private double spikeDiamond = 1.8;
@@ -102,6 +103,7 @@ public final class BallManager {
         this.shovelWooden = config.getDouble("ball.power.shovel.wooden", 0.6);
         this.shovelIron = config.getDouble("ball.power.shovel.iron", 0.9);
         this.shovelDiamond = config.getDouble("ball.power.shovel.diamond", 1.2);
+        this.shovelForward = config.getDouble("ball.shovel-forward", 0.25);
         this.spikeWooden = config.getDouble("ball.power.spike.wooden", 1.0);
         this.spikeIron = config.getDouble("ball.power.spike.iron", 1.4);
         this.spikeDiamond = config.getDouble("ball.power.spike.diamond", 1.8);
@@ -271,6 +273,21 @@ public final class BallManager {
         return arenaManager.getArenaAt(player.getLocation());
     }
 
+    private Vector horizontalDirection(Player player) {
+        Location eye = player.getEyeLocation();
+        Vector look = eye.getDirection();
+        Vector horizontal = new Vector(look.getX(), 0.0, look.getZ());
+        if (horizontal.lengthSquared() < 0.01) {
+            Location ballLocation = current != null ? current : ball.getLocation();
+            Vector direction = ballLocation.toVector().subtract(eye.toVector());
+            horizontal = new Vector(direction.getX(), 0.0, direction.getZ());
+        }
+        if (horizontal.lengthSquared() < 0.01) {
+            horizontal = new Vector(0.0, 0.0, 1.0);
+        }
+        return horizontal.normalize();
+    }
+
     private void bump(Player player, VolleyTier tier) {
         if (state == State.RALLY && touches <= 0) {
             return;
@@ -282,7 +299,9 @@ public final class BallManager {
         }
 
         double power = shovelPower(tier) * velocityScale;
-        motion = new Vector(0.0, power, 0.0);
+        Vector forward = horizontalDirection(player);
+        double horizontal = power * shovelForward;
+        motion = new Vector(forward.getX() * horizontal, power, forward.getZ() * horizontal);
         wasOnGround = false;
         updateName();
 
@@ -306,17 +325,7 @@ public final class BallManager {
         Location ballLocation = current != null ? current : ball.getLocation();
         Location eye = player.getEyeLocation();
 
-        Vector look = eye.getDirection();
-        Vector horizontal = new Vector(look.getX(), 0.0, look.getZ());
-        if (horizontal.lengthSquared() < 0.01) {
-            Vector direction = ballLocation.toVector().subtract(eye.toVector());
-            horizontal = new Vector(direction.getX(), 0.0, direction.getZ());
-        }
-        if (horizontal.lengthSquared() < 0.01) {
-            horizontal = new Vector(0.0, 0.0, 1.0);
-        }
-        horizontal.normalize();
-
+        Vector horizontal = horizontalDirection(player);
         double power = spikePower(tier) * velocityScale;
         double vertical = eye.getY() - ballLocation.getY();
 

@@ -16,6 +16,7 @@ import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -115,6 +116,7 @@ public final class GameManager {
             }
             snapshot(player);
             toolManager.giveKit(player);
+            applyGameEffects(player);
         }
 
         if (scoreManager != null) {
@@ -136,6 +138,7 @@ public final class GameManager {
         soloPositions.put(player.getUniqueId(), position);
         snapshot(player);
         toolManager.giveKit(player);
+        applyGameEffects(player);
 
         if (scoreManager != null) {
             scoreManager.resetMatch();
@@ -167,6 +170,21 @@ public final class GameManager {
         inventories.clear();
         effects.clear();
         active = false;
+    }
+
+    private void applyGameEffects(Player player) {
+        if (!plugin.getConfig().getBoolean("game.effects.enabled", true)) {
+            return;
+        }
+        applyEffect(player, PotionEffectType.JUMP_BOOST, plugin.getConfig().getInt("game.effects.jump-boost-level", 4));
+        applyEffect(player, PotionEffectType.SPEED, plugin.getConfig().getInt("game.effects.speed-level", 4));
+    }
+
+    private void applyEffect(Player player, PotionEffectType type, int level) {
+        if (level <= 0) {
+            return;
+        }
+        player.addPotionEffect(new PotionEffect(type, PotionEffect.INFINITE_DURATION, level - 1, false, false, false));
     }
 
     private void snapshot(Player player) {

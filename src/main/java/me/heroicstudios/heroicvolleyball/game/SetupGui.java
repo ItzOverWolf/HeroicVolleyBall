@@ -2,6 +2,7 @@ package me.heroicstudios.heroicvolleyball.game;
 
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
 import me.heroicstudios.heroicvolleyball.arena.Team;
+import me.heroicstudios.heroicvolleyball.gui.PositionLayout;
 import me.heroicstudios.heroicvolleyball.party.Party;
 import me.heroicstudios.heroicvolleyball.party.PartyManager;
 import me.heroicstudios.heroicvolleyball.position.PositionManager;
@@ -67,7 +68,7 @@ public final class SetupGui implements Listener {
 
     public void openSolo(Player player) {
         Holder holder = new Holder(null, Stage.SOLO, player.getUniqueId());
-        Inventory inventory = Bukkit.createInventory(holder, 27, Component.text("Choose your position"));
+        Inventory inventory = Bukkit.createInventory(holder, PositionLayout.SIZE, Component.text("Choose your position"));
         holder.inventory = inventory;
         renderSolo(holder);
         player.openInventory(inventory);
@@ -75,23 +76,24 @@ public final class SetupGui implements Listener {
 
     private void renderSolo(Holder holder) {
         Inventory inventory = holder.inventory;
-        inventory.clear();
+        PositionLayout.fillFrame(inventory);
         for (int number = 1; number <= 6; number++) {
-            ItemStack item = new ItemStack(Material.WHITE_WOOL);
+            ItemStack item = new ItemStack(Material.WHITE_STAINED_GLASS_PANE);
             ItemMeta meta = item.getItemMeta();
             meta.displayName(Component.text("Position " + number, NamedTextColor.WHITE)
-                    .decoration(TextDecoration.ITALIC, false));
+                    .decoration(TextDecoration.ITALIC, false)
+                    .decoration(TextDecoration.BOLD, true));
             List<Component> lore = new ArrayList<>();
             lore.add(loreLine("You will stand here on whichever team is up", NamedTextColor.GRAY));
             meta.lore(lore);
             item.setItemMeta(meta);
-            inventory.setItem(9 + number, item);
+            inventory.setItem(PositionLayout.slot(number), item);
         }
     }
 
     private void openTeamMenu(Setup setup, Player player) {
         Holder holder = new Holder(setup, Stage.TEAM, player.getUniqueId());
-        Inventory inventory = Bukkit.createInventory(holder, 27, Component.text("Choose your team"));
+        Inventory inventory = Bukkit.createInventory(holder, PositionLayout.SIZE, Component.text("Choose your team"));
         holder.inventory = inventory;
         renderTeam(holder);
         player.openInventory(inventory);
@@ -99,7 +101,7 @@ public final class SetupGui implements Listener {
 
     private void openPositionMenu(Setup setup, Player player, Team team) {
         Holder holder = new Holder(setup, Stage.POSITION, player.getUniqueId());
-        Inventory inventory = Bukkit.createInventory(holder, 27, Component.text("Choose your position"));
+        Inventory inventory = Bukkit.createInventory(holder, PositionLayout.SIZE, Component.text("Choose your position"));
         holder.inventory = inventory;
         renderPosition(holder, team);
         player.openInventory(inventory);
@@ -107,21 +109,21 @@ public final class SetupGui implements Listener {
 
     private void renderTeam(Holder holder) {
         Inventory inventory = holder.inventory;
-        inventory.clear();
+        PositionLayout.fillFrame(inventory);
         Setup setup = holder.setup;
         inventory.setItem(11, teamItem(Team.RED, setup));
         inventory.setItem(15, teamItem(Team.BLUE, setup));
-        inventory.setItem(22, infoItem(setup));
+        inventory.setItem(4, infoItem(setup));
     }
 
     private void renderPosition(Holder holder, Team team) {
         Inventory inventory = holder.inventory;
-        inventory.clear();
+        PositionLayout.fillFrame(inventory);
         Setup setup = holder.setup;
         for (int number = 1; number <= 6; number++) {
-            inventory.setItem(9 + number, positionItem(setup, team, number));
+            inventory.setItem(PositionLayout.slot(number), positionItem(setup, team, number));
         }
-        inventory.setItem(22, infoItem(setup));
+        inventory.setItem(4, infoItem(setup));
     }
 
     private ItemStack teamItem(Team team, Setup setup) {
@@ -225,7 +227,7 @@ public final class SetupGui implements Listener {
         }
 
         if (holder.stage == Stage.SOLO) {
-            int number = event.getSlot() - 9;
+            int number = PositionLayout.position(event.getSlot());
             if (number < 1 || number > 6) {
                 return;
             }
@@ -259,7 +261,7 @@ public final class SetupGui implements Listener {
             if (setup.positions.containsKey(player.getUniqueId())) {
                 return;
             }
-            int number = event.getSlot() - 9;
+            int number = PositionLayout.position(event.getSlot());
             if (number < 1 || number > 6) {
                 return;
             }

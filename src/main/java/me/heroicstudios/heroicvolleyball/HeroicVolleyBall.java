@@ -81,7 +81,7 @@ public final class HeroicVolleyBall extends JavaPlugin {
             volleyWandCommand.setExecutor(new VolleyWandCommand(wandManager));
         }
 
-        SetArenaCommand setArenaCommand = new SetArenaCommand(arenaManager, wandManager);
+        SetArenaCommand setArenaCommand = new SetArenaCommand(arenaManager, wandManager, positionManager);
         PluginCommand setArena = getCommand("setarena");
         if (setArena != null) {
             setArena.setExecutor(setArenaCommand);

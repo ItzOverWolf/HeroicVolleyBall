@@ -2,6 +2,10 @@
 # Arena regions are stored here automatically when you run /setarena.
 arenas: {}
 
+# Per-team facing direction (yaw in degrees) applied when players are teleported.
+# Set with /setarena <red|blue> <direction>; 0 = south, 90 = west, 180 = north, 270 = east.
+facing: {}
+
 # Ball physics and rule settings. Reload live with /volleyreload.
 ball:
   # Size of the sulfur cube ball (1 = small, 2 = default, ...).
@@ -28,6 +32,9 @@ ball:
     straight: 0.2
     # Upward speed added when hitting from below, bouncing it up and forward.
     up: 0.7
+  # Fraction of the shovel's upward power added as forward drift (0 = straight
+  # up, 0.25 = slightly forward in the direction you are facing).
+  shovel-forward: 0.25
   # Downward speed applied when the ball is hit with a shield.
   shield-deflect: 0.9
   # Fraction of downward speed kept as a bounce when the ball lands (0 = none).
@@ -53,6 +60,12 @@ game:
   # opponent a point. The neutral gray ball (over the net / flying out of bounds)
   # is always free to touch and never causes this penalty.
   opponent-touch-penalty: true
+  # Potion effects every player receives while a game is running. Applied when a
+  # game starts and removed when it ends. Set a level to 0 to disable it.
+  effects:
+    enabled: true
+    jump-boost-level: 4
+    speed-level: 4
 
 # Party settings for multiplayer games.
 party:

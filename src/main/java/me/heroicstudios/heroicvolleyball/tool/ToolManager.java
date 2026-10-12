@@ -56,7 +56,7 @@ public final class ToolManager {
         List<Component> lore = new ArrayList<>();
         if (tool == VolleyTool.SHOVEL) {
             lore.add(loreLine("Tier: " + tier.getDisplayName(), tier.getColor()));
-            lore.add(loreLine("Hit the ball to launch it straight up", NamedTextColor.GRAY));
+            lore.add(loreLine("Hit the ball to launch it up and forward", NamedTextColor.GRAY));
             lore.add(loreLine("Sneak + right-click to cycle power", NamedTextColor.DARK_GRAY));
         } else if (tool == VolleyTool.SWORD) {
             lore.add(loreLine("Tier: " + tier.getDisplayName(), tier.getColor()));

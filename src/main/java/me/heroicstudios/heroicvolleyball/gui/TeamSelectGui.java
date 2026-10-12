@@ -6,6 +6,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
@@ -16,27 +17,37 @@ import org.jetbrains.annotations.NotNull;
 
 public final class TeamSelectGui implements InventoryHolder {
 
+    private final Location target;
     private final Inventory inventory;
 
-    public TeamSelectGui() {
-        this.inventory = Bukkit.createInventory(this, 27, Component.text("Which team?", NamedTextColor.DARK_GRAY));
+    public TeamSelectGui(Location target) {
+        this.target = target;
+        this.inventory = Bukkit.createInventory(this, PositionLayout.SIZE, Component.text("Which team?"));
+        PositionLayout.fillFrame(inventory);
         fill();
     }
 
     private void fill() {
-        ItemStack red = new ItemStack(Material.RED_WOOL);
-        ItemMeta redMeta = red.getItemMeta();
-        redMeta.displayName(Component.text("Team Red", NamedTextColor.RED).decoration(TextDecoration.ITALIC, false).decoration(TextDecoration.BOLD, true));
-        redMeta.lore(List.of());
-        red.setItemMeta(redMeta);
-        inventory.setItem(11, red);
+        inventory.setItem(11, teamItem(Material.RED_WOOL, "Team Red", NamedTextColor.RED));
+        inventory.setItem(15, teamItem(Material.BLUE_WOOL, "Team Blue", NamedTextColor.BLUE));
+    }
 
-        ItemStack blue = new ItemStack(Material.BLUE_WOOL);
-        ItemMeta blueMeta = blue.getItemMeta();
-        blueMeta.displayName(Component.text("Team Blue", NamedTextColor.BLUE).decoration(TextDecoration.ITALIC, false).decoration(TextDecoration.BOLD, true));
-        blueMeta.lore(List.of());
-        blue.setItemMeta(blueMeta);
-        inventory.setItem(15, blue);
+    private ItemStack teamItem(Material material, String name, NamedTextColor color) {
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        meta.displayName(Component.text(name, color)
+                .decoration(TextDecoration.ITALIC, false)
+                .decoration(TextDecoration.BOLD, true));
+        meta.lore(List.of(
+                Component.text("Click to assign this position", NamedTextColor.GRAY)
+                        .decoration(TextDecoration.ITALIC, false)
+        ));
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    public Location getTarget() {
+        return target;
     }
 
     public void open(Player player) {

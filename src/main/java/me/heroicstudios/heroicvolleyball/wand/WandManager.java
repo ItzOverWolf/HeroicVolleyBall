@@ -22,11 +22,9 @@ public final class WandManager {
     private final NamespacedKey wandKey;
     private final Map<UUID, Location> firstPoints = new HashMap<>();
     private final Map<UUID, Location> secondPoints = new HashMap<>();
-    private final HeroicVolleyBall plugin;
 
     public WandManager(HeroicVolleyBall plugin) {
         this.wandKey = new NamespacedKey(plugin, "volley_wand");
-        this.plugin = plugin;
     }
 
     public ItemStack createWand() {
@@ -84,10 +82,7 @@ public final class WandManager {
     }
 
     public void openPositionMenu(org.bukkit.entity.Player player, Location targetBlock) {
-        if (plugin.getPositionManager() != null && plugin.getGuiListener() != null) {
-            plugin.getPositionManager().startSelection(player.getUniqueId(), targetBlock);
-            plugin.getGuiListener().storeSelection(player.getUniqueId(), "default", targetBlock);
-        }
-        new me.heroicstudios.heroicvolleyball.gui.TeamSelectGui().open(player);
+        player.playSound(player.getLocation(), org.bukkit.Sound.UI_BUTTON_CLICK, 0.7f, 1.4f);
+        new me.heroicstudios.heroicvolleyball.gui.TeamSelectGui(targetBlock).open(player);
     }
 }
