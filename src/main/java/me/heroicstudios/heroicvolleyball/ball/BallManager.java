@@ -144,7 +144,6 @@ public final class BallManager {
             cube.setSilent(true);
             cube.setMaximumNoDamageTicks(0);
             cube.setNoDamageTicks(0);
-            cube.setFuseTicks(0);
             cube.setCustomNameVisible(true);
             cube.setEquipped(new ItemStack(Material.RED_WOOL));
             disableDrag(cube);
