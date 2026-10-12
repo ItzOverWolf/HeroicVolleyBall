@@ -39,6 +39,11 @@ ball:
   shield-deflect: 0.9
   # Fraction of downward speed kept as a bounce when the ball lands (0 = none).
   bounce: 0.3
+  # Ticks to wait after the ball lands before the point is reset to a serve.
+  # A short delay lets the ball visibly settle instead of teleporting away.
+  serve-reset-delay: 10
+  # If true, the floating name above the ball (Serve / touches) is shown.
+  show-name: true
   # Per-tier tool power.
   power:
     shovel:
@@ -66,11 +71,25 @@ game:
     enabled: true
     jump-boost-level: 4
     speed-level: 4
+  # Show big on-screen titles when a point, set or match is won.
+  titles: true
+  # Announce points, sets and match wins in chat.
+  broadcast-points: true
+
+# Sidebar scoreboard shown to every player.
+scoreboard:
+  enabled: true
 
 # Party settings for multiplayer games.
 party:
   # Maximum number of players a party can hold (must be even to start a game).
   max-size: 12
+
+# Volleyball tool settings.
+tools:
+  # Extra blocks added to every player's entity interaction range while a game
+  # is running, so tools can reach the ball from further away.
+  reach-bonus: 2.0
 
 # Note Block Studio (.nbs) music played during matches.
 # Drop your .nbs files into plugins/HeroicVolleyBall/music/ and set the file below.

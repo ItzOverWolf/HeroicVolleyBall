@@ -1,6 +1,7 @@
 package me.heroicstudios.heroicvolleyball.gui;
 
 import me.heroicstudios.heroicvolleyball.arena.Team;
+import me.heroicstudios.heroicvolleyball.message.Messages;
 import me.heroicstudios.heroicvolleyball.position.PositionManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -16,9 +17,11 @@ import org.bukkit.inventory.InventoryHolder;
 public final class GuiListener implements Listener {
 
     private final PositionManager positionManager;
+    private final Messages messages;
 
-    public GuiListener(PositionManager positionManager) {
+    public GuiListener(PositionManager positionManager, Messages messages) {
         this.positionManager = positionManager;
+        this.messages = messages;
     }
 
     @EventHandler
@@ -61,13 +64,14 @@ public final class GuiListener implements Listener {
 
             player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
             String row = (positionNumber >= 2 && positionNumber <= 4) ? "Front Row" : "Back Row";
-            player.sendActionBar(Component.text("Saved ", NamedTextColor.GREEN)
-                    .append(Component.text("Position " + positionNumber, team.getColor()))
-                    .append(Component.text(" (" + row + ") for " + team.getDisplayName(), NamedTextColor.GRAY)));
-            player.sendMessage(Component.text("Saved Position " + positionNumber + " (" + row + ") for Team "
-                            + team.getDisplayName() + " at ", NamedTextColor.GREEN)
-                    .append(Component.text(target.getBlockX() + ", " + target.getBlockY() + ", " + target.getBlockZ(),
-                            NamedTextColor.AQUA)));
+            String teamTag = Messages.teamDisplay(team);
+            messages.actionBar(player, "gui.saved-actionbar",
+                    "position", String.valueOf(positionNumber), "row", row, "team", teamTag);
+            messages.send(player, "gui.saved-chat",
+                    "position", String.valueOf(positionNumber),
+                    "row", row,
+                    "team", teamTag,
+                    "location", target.getBlockX() + ", " + target.getBlockY() + ", " + target.getBlockZ());
             player.closeInventory();
         }
     }

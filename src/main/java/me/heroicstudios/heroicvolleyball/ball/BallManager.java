@@ -7,6 +7,7 @@ import me.heroicstudios.heroicvolleyball.arena.Arena;
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
 import me.heroicstudios.heroicvolleyball.arena.Team;
 import me.heroicstudios.heroicvolleyball.game.GameManager;
+import me.heroicstudios.heroicvolleyball.message.Messages;
 import me.heroicstudios.heroicvolleyball.position.PositionManager;
 import me.heroicstudios.heroicvolleyball.score.ScoreManager;
 import me.heroicstudios.heroicvolleyball.tool.VolleyTier;
@@ -60,7 +61,9 @@ public final class BallManager {
     private double shieldDeflect = 0.9;
     private double bounceFactor = 0.3;
     private double settleThreshold = 0.12;
+    private int serveResetDelay = 10;
     private boolean touchPenalty = true;
+    private boolean showName = true;
     private double shovelWooden = 0.6;
     private double shovelIron = 0.9;
     private double shovelDiamond = 1.2;
@@ -99,7 +102,9 @@ public final class BallManager {
         this.spikeVerticalThreshold = config.getDouble("ball.spike.vertical-threshold", 1.0);
         this.shieldDeflect = config.getDouble("ball.shield-deflect", 0.9);
         this.bounceFactor = config.getDouble("ball.bounce", 0.3);
+        this.serveResetDelay = Math.max(0, config.getInt("ball.serve-reset-delay", 10));
         this.touchPenalty = config.getBoolean("game.opponent-touch-penalty", true);
+        this.showName = config.getBoolean("ball.show-name", true);
         this.shovelWooden = config.getDouble("ball.power.shovel.wooden", 0.6);
         this.shovelIron = config.getDouble("ball.power.shovel.iron", 0.9);
         this.shovelDiamond = config.getDouble("ball.power.shovel.diamond", 1.2);
@@ -114,6 +119,22 @@ public final class BallManager {
 
     public @Nullable SulfurCube getBall() {
         return ball;
+    }
+
+    public int getTouches() {
+        return Math.max(touches, 0);
+    }
+
+    public int getMaxTouches() {
+        return maxTouches;
+    }
+
+    public @Nullable Team getPossession() {
+        return possession;
+    }
+
+    public String getStateName() {
+        return state == State.RALLY ? "Rally" : "Serve";
     }
 
     public boolean isBall(@Nullable Entity entity) {
@@ -244,8 +265,7 @@ public final class BallManager {
             if (current != null) {
                 current.getWorld().playSound(current, Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
             }
-            player.sendActionBar(Component.text("PENALTY  ", NamedTextColor.RED)
-                    .append(Component.text("You touched the opponent's ball", NamedTextColor.GRAY)));
+            plugin.getMessages().actionBar(player, "ball.penalty");
             return;
         }
 
@@ -308,8 +328,7 @@ public final class BallManager {
         if (current != null) {
             current.getWorld().playSound(current, Sound.BLOCK_WOOL_PLACE, 1.0f, 1.2f);
         }
-        player.sendActionBar(Component.text("BUMP  ", NamedTextColor.GREEN)
-                .append(Component.text("Ball Up", NamedTextColor.GRAY)));
+        plugin.getMessages().actionBar(player, "ball.bump");
     }
 
     private void spike(Player player, VolleyTier tier) {
@@ -349,8 +368,7 @@ public final class BallManager {
         updateName();
 
         current.getWorld().playSound(current, Sound.BLOCK_WOOL_BREAK, 1.0f, 0.9f);
-        player.sendActionBar(Component.text("SPIKE  ", NamedTextColor.RED)
-                .append(Component.text("Ball Spike", NamedTextColor.GRAY)));
+        plugin.getMessages().actionBar(player, "ball.spike");
     }
 
     private void tick() {
@@ -545,14 +563,23 @@ public final class BallManager {
     }
 
     private void scheduleServeReset(Team team) {
-        Bukkit.getScheduler().runTask(plugin, () -> {
-            if (ball != null && ball.isValid()) {
-                resetToServe(team);
-            }
-            if (gameManager != null) {
-                gameManager.teleportToPositions(team);
-            }
-        });
+        if (serveResetDelay <= 0) {
+            Bukkit.getScheduler().runTask(plugin, () -> performServeReset(team));
+        } else {
+            Bukkit.getScheduler().runTaskLater(plugin, () -> performServeReset(team), serveResetDelay);
+        }
+    }
+
+    private void performServeReset(Team team) {
+        if (state == State.RALLY) {
+            return;
+        }
+        if (ball != null && ball.isValid()) {
+            resetToServe(team);
+        }
+        if (gameManager != null) {
+            gameManager.teleportToPositions(team);
+        }
     }
 
     private void clamp(Vector vector) {
@@ -576,12 +603,21 @@ public final class BallManager {
             return;
         }
 
+        if (!showName) {
+            ball.setCustomNameVisible(false);
+            return;
+        }
+
+        Messages messages = plugin.getMessages();
         Component name;
         if (state == State.IDLE) {
-            name = Component.text("Serve", NamedTextColor.GRAY);
+            name = messages.get("ball.name-serve");
         } else {
-            NamedTextColor color = possession != null ? possession.getColor() : NamedTextColor.GRAY;
-            name = Component.text("Touches: " + Math.max(touches, 0) + "/" + maxTouches, color);
+            String color = possession != null ? Messages.colorName(possession) : "gray";
+            name = messages.get("ball.name-touches",
+                    "color", color,
+                    "touches", String.valueOf(Math.max(touches, 0)),
+                    "max", String.valueOf(maxTouches));
         }
         ball.customName(name);
         ball.setCustomNameVisible(true);

@@ -2,10 +2,9 @@ package me.heroicstudios.heroicvolleyball.command;
 
 import me.heroicstudios.heroicvolleyball.ball.BallManager;
 import me.heroicstudios.heroicvolleyball.game.GameManager;
+import me.heroicstudios.heroicvolleyball.message.Messages;
 import me.heroicstudios.heroicvolleyball.music.MusicManager;
 import me.heroicstudios.heroicvolleyball.score.ScoreManager;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -17,12 +16,15 @@ public final class RestartGameCommand implements CommandExecutor {
     private final ScoreManager scoreManager;
     private final MusicManager musicManager;
     private final GameManager gameManager;
+    private final Messages messages;
 
-    public RestartGameCommand(BallManager ballManager, ScoreManager scoreManager, MusicManager musicManager, GameManager gameManager) {
+    public RestartGameCommand(BallManager ballManager, ScoreManager scoreManager, MusicManager musicManager,
+                              GameManager gameManager, Messages messages) {
         this.ballManager = ballManager;
         this.scoreManager = scoreManager;
         this.musicManager = musicManager;
         this.gameManager = gameManager;
+        this.messages = messages;
     }
 
     @Override
@@ -33,12 +35,12 @@ public final class RestartGameCommand implements CommandExecutor {
         gameManager.end();
 
         if (!ballManager.spawnAtStart()) {
-            sender.sendMessage(Component.text("Position 6 has not been set for either team yet.", NamedTextColor.RED));
+            messages.send(sender, "game.console-need-position");
             return true;
         }
 
         musicManager.startDefault();
-        sender.sendMessage(Component.text("Game restarted! The ball has been placed at Position 6.", NamedTextColor.GREEN));
+        messages.send(sender, "game.restarted");
         return true;
     }
 }

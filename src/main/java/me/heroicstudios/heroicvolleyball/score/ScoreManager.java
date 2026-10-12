@@ -4,6 +4,7 @@ import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
 import me.heroicstudios.heroicvolleyball.arena.Team;
 import me.heroicstudios.heroicvolleyball.game.GameManager;
+import me.heroicstudios.heroicvolleyball.message.Messages;
 import me.heroicstudios.heroicvolleyball.music.MusicManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -33,6 +34,9 @@ public final class ScoreManager implements Listener {
 
     private int pointsPerSet = 25;
     private int setsToWin = 2;
+    private boolean scoreboardEnabled = true;
+    private boolean showTitles = true;
+    private boolean broadcastPoints = true;
 
     private int redPoints;
     private int bluePoints;
@@ -58,9 +62,32 @@ public final class ScoreManager implements Listener {
         this.gameManager = gameManager;
     }
 
+    public int getRedPoints() {
+        return redPoints;
+    }
+
+    public int getBluePoints() {
+        return bluePoints;
+    }
+
+    public int getRedSets() {
+        return redSets;
+    }
+
+    public int getBlueSets() {
+        return blueSets;
+    }
+
+    public boolean isMatchOver() {
+        return matchOver;
+    }
+
     public void loadConfig() {
         this.pointsPerSet = Math.max(1, plugin.getConfig().getInt("game.points-per-set", 25));
         this.setsToWin = Math.max(1, plugin.getConfig().getInt("game.sets-to-win", 2));
+        this.scoreboardEnabled = plugin.getConfig().getBoolean("scoreboard.enabled", true);
+        this.showTitles = plugin.getConfig().getBoolean("game.titles", true);
+        this.broadcastPoints = plugin.getConfig().getBoolean("game.broadcast-points", true);
     }
 
     private void setupBoard() {
@@ -90,6 +117,9 @@ public final class ScoreManager implements Listener {
     }
 
     public void apply(Player player) {
+        if (!scoreboardEnabled) {
+            return;
+        }
         player.setScoreboard(board);
     }
 
@@ -110,12 +140,19 @@ public final class ScoreManager implements Listener {
             bluePoints++;
         }
 
-        Bukkit.broadcast(Component.text(team.getDisplayName() + " scores!  ", team.getColor())
-                .append(Component.text("Score: " + redPoints + " - " + bluePoints, NamedTextColor.WHITE)));
+        Messages messages = plugin.getMessages();
+        String teamTag = Messages.teamDisplay(team);
+        String red = String.valueOf(redPoints);
+        String blue = String.valueOf(bluePoints);
 
-        showTitle(
-                Component.text(team.getDisplayName() + " scores!", team.getColor()),
-                Component.text("Score: " + redPoints + " - " + bluePoints, NamedTextColor.WHITE));
+        if (broadcastPoints) {
+            Bukkit.broadcast(messages.get("score.point", "team", teamTag, "red", red, "blue", blue));
+        }
+        if (showTitles) {
+            showTitle(
+                    messages.get("score.point-title", "team", teamTag, "red", red, "blue", blue),
+                    messages.get("score.point-subtitle", "team", teamTag, "red", red, "blue", blue));
+        }
 
         playTeamSound(team, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
         playTeamSound(team.opposite(), Sound.ENTITY_WITHER_SPAWN, 1.0f, 1.0f);
@@ -138,12 +175,22 @@ public final class ScoreManager implements Listener {
         redPoints = 0;
         bluePoints = 0;
 
-        Bukkit.broadcast(Component.text(team.getDisplayName() + " wins the set!  ", team.getColor())
-                .append(Component.text("Sets: Red " + redSets + " - " + blueSets + " Blue", NamedTextColor.WHITE)));
+        Messages messages = plugin.getMessages();
+        String teamTag = Messages.teamDisplay(team);
+        String redSetsText = String.valueOf(redSets);
+        String blueSetsText = String.valueOf(blueSets);
 
-        showTitle(
-                Component.text(team.getDisplayName() + " wins the set!", team.getColor()),
-                Component.text("Sets: Red " + redSets + " - " + blueSets + " Blue", NamedTextColor.WHITE));
+        if (broadcastPoints) {
+            Bukkit.broadcast(messages.get("score.set", "team", teamTag,
+                    "red_sets", redSetsText, "blue_sets", blueSetsText));
+        }
+        if (showTitles) {
+            showTitle(
+                    messages.get("score.set-title", "team", teamTag,
+                            "red_sets", redSetsText, "blue_sets", blueSetsText),
+                    messages.get("score.set-subtitle", "team", teamTag,
+                            "red_sets", redSetsText, "blue_sets", blueSetsText));
+        }
 
         playTeamSound(team, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
         playTeamSound(team.opposite(), Sound.ENTITY_WITHER_DEATH, 1.0f, 1.0f);
@@ -154,11 +201,14 @@ public final class ScoreManager implements Listener {
             if (musicManager != null) {
                 musicManager.stop();
             }
-            Bukkit.broadcast(Component.text(team.getDisplayName() + " wins the game! ", team.getColor())
-                    .append(Component.text("(Run /startgame to play again)", NamedTextColor.GRAY)));
-            showTitle(
-                    Component.text(team.getDisplayName() + " wins the game!", team.getColor()),
-                    Component.text("Run /startgame to play again", NamedTextColor.GRAY));
+            if (broadcastPoints) {
+                Bukkit.broadcast(messages.get("score.win", "team", teamTag));
+            }
+            if (showTitles) {
+                showTitle(
+                        messages.get("score.win-title", "team", teamTag),
+                        messages.get("score.win-subtitle", "team", teamTag));
+            }
             playTeamSound(team, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
             if (gameManager != null) {
                 gameManager.end();

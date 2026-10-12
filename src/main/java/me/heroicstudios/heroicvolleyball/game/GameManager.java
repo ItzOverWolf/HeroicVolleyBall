@@ -13,6 +13,10 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.potion.PotionEffect;
@@ -33,6 +37,7 @@ public final class GameManager {
     private final PositionManager positionManager;
     private final ToolManager toolManager;
     private final PartyManager partyManager;
+    private final NamespacedKey reachKey;
 
     private BallManager ballManager;
     private ScoreManager scoreManager;
@@ -53,6 +58,7 @@ public final class GameManager {
         this.positionManager = positionManager;
         this.toolManager = toolManager;
         this.partyManager = partyManager;
+        this.reachKey = new NamespacedKey(plugin, "volley_reach");
     }
 
     public void bind(BallManager ballManager, ScoreManager scoreManager, MusicManager musicManager) {
@@ -66,6 +72,10 @@ public final class GameManager {
 
     public boolean isActive() {
         return active;
+    }
+
+    public int getPlayerCount() {
+        return teams.size() + soloPositions.size();
     }
 
     public PartyManager getPartyManager() {
@@ -117,6 +127,7 @@ public final class GameManager {
             snapshot(player);
             toolManager.giveKit(player);
             applyGameEffects(player);
+            applyReach(player);
         }
 
         if (scoreManager != null) {
@@ -139,6 +150,7 @@ public final class GameManager {
         snapshot(player);
         toolManager.giveKit(player);
         applyGameEffects(player);
+        applyReach(player);
 
         if (scoreManager != null) {
             scoreManager.resetMatch();
@@ -180,6 +192,25 @@ public final class GameManager {
         applyEffect(player, PotionEffectType.SPEED, plugin.getConfig().getInt("game.effects.speed-level", 4));
     }
 
+    private void applyReach(Player player) {
+        AttributeInstance instance = player.getAttribute(Attribute.ENTITY_INTERACTION_RANGE);
+        if (instance == null) {
+            return;
+        }
+        instance.removeModifier(reachKey);
+        double bonus = plugin.getConfig().getDouble("tools.reach-bonus", 2.0);
+        if (bonus != 0.0) {
+            instance.addTransientModifier(new AttributeModifier(reachKey, bonus, AttributeModifier.Operation.ADD_NUMBER));
+        }
+    }
+
+    private void removeReach(Player player) {
+        AttributeInstance instance = player.getAttribute(Attribute.ENTITY_INTERACTION_RANGE);
+        if (instance != null) {
+            instance.removeModifier(reachKey);
+        }
+    }
+
     private void applyEffect(Player player, PotionEffectType type, int level) {
         if (level <= 0) {
             return;
@@ -206,6 +237,8 @@ public final class GameManager {
         if (contents != null) {
             player.getInventory().setContents(contents);
         }
+
+        removeReach(player);
 
         Collection<PotionEffect> saved = effects.get(player.getUniqueId());
         for (PotionEffect effect : player.getActivePotionEffects()) {

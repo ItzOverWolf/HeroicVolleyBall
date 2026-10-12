@@ -1,0 +1,108 @@
+# HeroicVolleyBall messages
+#
+# Formatting uses MiniMessage: https://docs.advntr.dev/minimessage/format.html
+# Examples: <red>text</red>, <bold>, <gradient:red:blue>, <#ff00ff>
+# Legacy '&' color codes are NOT used here.
+#
+# Placeholders are wrapped in {curly_braces}. See README.md for the full list.
+
+# Prepended to most command feedback messages.
+prefix: "<dark_aqua>[</dark_aqua><aqua>Volleyball</aqua><dark_aqua>]</dark_aqua> <gray>"
+
+general:
+  players-only: "<red>This command can only be used by players."
+  no-permission: "<red>You do not have permission to do that."
+  reloaded: "<green>Configuration and messages reloaded."
+
+wand:
+  received: "<green>You received the Volleyball Wand. <gray>Left-click for point 1, right-click for point 2."
+  point1: "<gray>Point 1 set to <aqua>{location}</aqua><gray>."
+  point2: "<gray>Point 2 set to <aqua>{location}</aqua><gray>."
+  both-points: "<green>Both points set! Use <white>/setarena <red|blue> <white>[direction]<green>."
+
+arena:
+  set: "<gray>The <team> team's arena has been set, facing <white>{facing}</white><gray>!"
+  usage: "<red>Usage: /setarena <red|blue> [direction]"
+  usage-hint: "<gray>Direction: north, south, east, west (or n/s/e/w) plus diagonals. Omit it to face where you are looking now."
+  unknown-team: "<red>Unknown team \"{input}\". Use red or blue."
+  unknown-direction: "<red>Unknown direction \"{input}\". Use north, south, east, west or a diagonal."
+  need-points: "<red>You must select two points with the Volleyball Wand (/volleywand) first."
+  world-mismatch: "<red>Both points must be in the same world."
+  leave: "<yellow>You're out of the arena!"
+  enter: "<gray>You're in the {team} <gray>team's arena"
+
+ball:
+  spawned: "<green>The volleyball has been spawned at your location."
+  bump: "<green><bold>BUMP</bold>  <gray>Ball Up"
+  spike: "<red><bold>SPIKE</bold>  <gray>Ball Spike"
+  penalty: "<red><bold>PENALTY</bold>  <gray>You touched the opponent's ball"
+  name-serve: "<gray>Serve"
+  name-touches: "<{color}>Touches: {touches}/{max}"
+
+score:
+  point: "{team} <white>scores!  <white>Score: {red} - {blue}"
+  point-title: "{team} <white>scores!"
+  point-subtitle: "<white>Score: {red} - {blue}"
+  set: "{team} <white>wins the set!  <white>Sets: Red {red_sets} - {blue_sets} Blue"
+  set-title: "{team} <white>wins the set!"
+  set-subtitle: "<white>Sets: Red {red_sets} - {blue_sets} Blue"
+  win: "{team} <white>wins the game! <gray>(Run /startgame to play again)"
+  win-title: "{team} <white>wins the game!"
+  win-subtitle: "<gray>Run /startgame to play again"
+
+game:
+  party-needs-even: "<red>A party needs an even number of players (2, 4, 6...) to start."
+  party-choose: "<green>Choose your team and position to begin."
+  solo-choose: "<green>Choose your position to start a solo game."
+  solo-started: "<green>Solo game started at Position {position}."
+  assigned: "<green>Game on! Your team has been assigned."
+  assigned-title: "{team} Team"
+  assigned-subtitle: "<gray>Good luck!"
+  team-full: "<red>That team is full."
+  position-taken: "<red>That position is taken."
+  chosen: "<green>You chose Position {position}."
+  console-start: "<green>The volleyball has been placed at Position 6. Use the shovel to serve!"
+  console-need-position: "<red>Position 6 has not been set for either team yet."
+  stopped: "<yellow>Game stopped. The ball and music have been removed and the score reset."
+  restarted: "<green>Game restarted! The ball has been placed at Position 6."
+
+party:
+  players-only: "<red>Only players can use party commands."
+  already-in: "<red>You are already in a party. Use /partyleave first."
+  created: "<green>Party created! Invite players with /partyinvite <player>."
+  created-broadcast: "<gray>{player} created a party."
+  not-in: "<red>You are not in a party. Use /partycreate first."
+  leader-only-invite: "<red>Only the party leader can invite players."
+  invite-usage: "<red>Usage: /partyinvite <player>"
+  player-not-found: "<red>Player not found."
+  self-invite: "<red>You are already in the party."
+  target-in-party: "<red>{player} is already in a party."
+  full: "<red>Your party is full ({max})."
+  joined-broadcast: "<green>{player} joined the party. ({size}/{max})"
+  left: "<yellow>You left the party."
+  left-broadcast: "<gray>{player} left the party."
+  not-leader-disband: "<red>Only the party leader can disband the party."
+  disbanded: "<yellow>The party has been disbanded."
+
+tool:
+  power-set: "<gray>{tool} power set to {tier}"
+
+give:
+  usage: "<red>Usage: /volleygive <shovel|sword|shield> [tier]"
+  unknown-tool: "<red>Unknown tool \"{input}\". Use shovel, sword or shield."
+  unknown-tier: "<red>Unknown tier \"{input}\". Use wooden, iron or diamond."
+  received: "<green>You received the <white>{tool}</white>."
+
+gui:
+  saved-actionbar: "<green>Saved <white>Position {position}</white> <gray>({row}) for {team}"
+  saved-chat: "<green>Saved Position {position} ({row}) for Team {team} at <aqua>{location}</aqua>"
+
+music:
+  usage: "<red>Usage: /volleymusic <start|stop|list|reload> [song]"
+  start-failed: "<red>Could not start music. Check the music folder."
+  now-playing: "<green>Now playing."
+  stopped: "<yellow>Music stopped."
+  no-files: "<gray>No .nbs files found in {path}"
+  songs: "<gold>Songs:"
+  song-entry: "<gray> - {song}"
+  reloaded: "<green>Music configuration reloaded."

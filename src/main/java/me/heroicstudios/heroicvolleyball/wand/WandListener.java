@@ -1,8 +1,7 @@
 package me.heroicstudios.heroicvolleyball.wand;
 
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import me.heroicstudios.heroicvolleyball.message.Messages;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -15,9 +14,11 @@ import org.bukkit.inventory.EquipmentSlot;
 public final class WandListener implements Listener {
 
     private final WandManager wandManager;
+    private final Messages messages;
 
-    public WandListener(WandManager wandManager) {
+    public WandListener(WandManager wandManager, Messages messages) {
         this.wandManager = wandManager;
+        this.messages = messages;
     }
 
     @EventHandler
@@ -46,11 +47,10 @@ public final class WandListener implements Listener {
             event.setCancelled(true);
             wandManager.setFirstPoint(player.getUniqueId(), block.getLocation());
 
-            player.sendMessage(Component.text("Point 1 set to ", NamedTextColor.GRAY)
-                    .append(Component.text(locationString(block), NamedTextColor.AQUA)));
+            messages.send(player, "wand.point1", "location", locationString(block));
 
             if (wandManager.hasCompleteSelection(player.getUniqueId())) {
-                player.sendMessage(Component.text("Both points set! Use /setarena <red|blue>.", NamedTextColor.GREEN));
+                messages.send(player, "wand.both-points");
             }
         } else if (action == Action.RIGHT_CLICK_BLOCK) {
             event.setCancelled(true);
@@ -59,11 +59,10 @@ public final class WandListener implements Listener {
             } else {
                 wandManager.setSecondPoint(player.getUniqueId(), block.getLocation());
 
-                player.sendMessage(Component.text("Point 2 set to ", NamedTextColor.GRAY)
-                        .append(Component.text(locationString(block), NamedTextColor.AQUA)));
+                messages.send(player, "wand.point2", "location", locationString(block));
 
                 if (wandManager.hasCompleteSelection(player.getUniqueId())) {
-                    player.sendMessage(Component.text("Both points set! Use /setarena <red|blue>.", NamedTextColor.GREEN));
+                    messages.send(player, "wand.both-points");
                 }
             }
         }

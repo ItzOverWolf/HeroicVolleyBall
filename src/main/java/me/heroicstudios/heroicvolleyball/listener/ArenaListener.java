@@ -6,8 +6,7 @@ import java.util.UUID;
 
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
 import me.heroicstudios.heroicvolleyball.arena.Team;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
+import me.heroicstudios.heroicvolleyball.message.Messages;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
@@ -20,10 +19,12 @@ import org.jetbrains.annotations.Nullable;
 public final class ArenaListener implements Listener {
 
     private final ArenaManager arenaManager;
+    private final Messages messages;
     private final Map<UUID, Team> currentArenas = new HashMap<>();
 
-    public ArenaListener(ArenaManager arenaManager) {
+    public ArenaListener(ArenaManager arenaManager, Messages messages) {
         this.arenaManager = arenaManager;
+        this.messages = messages;
     }
 
     @EventHandler
@@ -49,13 +50,11 @@ public final class ArenaListener implements Listener {
 
         if (current == null) {
             currentArenas.remove(uuid);
-            player.sendActionBar(Component.text("You're out of the arena!", NamedTextColor.YELLOW));
+            messages.actionBar(player, "arena.leave");
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.6f, 1.2f);
         } else {
             currentArenas.put(uuid, current);
-            player.sendActionBar(Component.text("You're in the ", NamedTextColor.GRAY)
-                    .append(Component.text(current.getDisplayName(), current.getColor()))
-                    .append(Component.text(" team's arena", NamedTextColor.GRAY)));
+            messages.actionBar(player, "arena.enter", "team", Messages.teamDisplay(current));
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.6f, 1.6f);
         }
     }

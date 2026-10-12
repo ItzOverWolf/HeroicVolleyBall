@@ -4,9 +4,8 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import me.heroicstudios.heroicvolleyball.message.Messages;
 import me.heroicstudios.heroicvolleyball.music.MusicManager;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -17,15 +16,17 @@ import org.jetbrains.annotations.Nullable;
 public final class VolleyMusicCommand implements CommandExecutor, TabCompleter {
 
     private final MusicManager musicManager;
+    private final Messages messages;
 
-    public VolleyMusicCommand(MusicManager musicManager) {
+    public VolleyMusicCommand(MusicManager musicManager, Messages messages) {
         this.musicManager = musicManager;
+        this.messages = messages;
     }
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (args.length == 0) {
-            sender.sendMessage(Component.text("Usage: /" + label + " <start|stop|list|reload> [song]", NamedTextColor.RED));
+            messages.send(sender, "music.usage");
             return true;
         }
 
@@ -34,31 +35,31 @@ public final class VolleyMusicCommand implements CommandExecutor, TabCompleter {
                 String song = args.length >= 2 ? args[1] : null;
                 boolean ok = song == null ? startDefault() : musicManager.start(song);
                 if (!ok) {
-                    sender.sendMessage(Component.text("Could not start music. Check the music folder.", NamedTextColor.RED));
+                    messages.send(sender, "music.start-failed");
                 } else {
-                    sender.sendMessage(Component.text("Now playing.", NamedTextColor.GREEN));
+                    messages.send(sender, "music.now-playing");
                 }
             }
             case "stop" -> {
                 musicManager.stop();
-                sender.sendMessage(Component.text("Music stopped.", NamedTextColor.YELLOW));
+                messages.send(sender, "music.stopped");
             }
             case "list" -> {
                 File[] files = musicManager.getFolder().listFiles((dir, name) -> name.toLowerCase().endsWith(".nbs"));
                 if (files == null || files.length == 0) {
-                    sender.sendMessage(Component.text("No .nbs files found in " + musicManager.getFolder().getPath(), NamedTextColor.GRAY));
+                    messages.send(sender, "music.no-files", "path", musicManager.getFolder().getPath());
                     return true;
                 }
-                sender.sendMessage(Component.text("Songs:", NamedTextColor.GOLD));
+                messages.send(sender, "music.songs");
                 for (File file : files) {
-                    sender.sendMessage(Component.text(" - " + file.getName(), NamedTextColor.GRAY));
+                    messages.sendRaw(sender, "music.song-entry", "song", file.getName());
                 }
             }
             case "reload" -> {
                 musicManager.loadConfig();
-                sender.sendMessage(Component.text("Music configuration reloaded.", NamedTextColor.GREEN));
+                messages.send(sender, "music.reloaded");
             }
-            default -> sender.sendMessage(Component.text("Usage: /" + label + " <start|stop|list|reload> [song]", NamedTextColor.RED));
+            default -> messages.send(sender, "music.usage");
         }
         return true;
     }

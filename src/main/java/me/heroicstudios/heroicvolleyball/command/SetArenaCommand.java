@@ -6,10 +6,9 @@ import java.util.List;
 import me.heroicstudios.heroicvolleyball.arena.Arena;
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
 import me.heroicstudios.heroicvolleyball.arena.Team;
+import me.heroicstudios.heroicvolleyball.message.Messages;
 import me.heroicstudios.heroicvolleyball.position.PositionManager;
 import me.heroicstudios.heroicvolleyball.wand.WandManager;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -24,30 +23,32 @@ public final class SetArenaCommand implements CommandExecutor, TabCompleter {
     private final ArenaManager arenaManager;
     private final WandManager wandManager;
     private final PositionManager positionManager;
+    private final Messages messages;
 
-    public SetArenaCommand(ArenaManager arenaManager, WandManager wandManager, PositionManager positionManager) {
+    public SetArenaCommand(ArenaManager arenaManager, WandManager wandManager, PositionManager positionManager,
+                           Messages messages) {
         this.arenaManager = arenaManager;
         this.wandManager = wandManager;
         this.positionManager = positionManager;
+        this.messages = messages;
     }
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(Component.text("This command can only be used by players.", NamedTextColor.RED));
+            messages.send(sender, "general.players-only");
             return true;
         }
 
         if (args.length < 1 || args.length > 2) {
-            player.sendMessage(Component.text("Usage: /" + label + " <red|blue> [direction]", NamedTextColor.RED));
-            player.sendMessage(Component.text("Direction: north, south, east, west (or n/s/e/w) plus diagonals. "
-                    + "Omit it to face where you are looking now.", NamedTextColor.GRAY));
+            messages.send(player, "arena.usage");
+            messages.send(player, "arena.usage-hint");
             return true;
         }
 
         Team team = Team.fromString(args[0]);
         if (team == null) {
-            player.sendMessage(Component.text("Unknown team \"" + args[0] + "\". Use red or blue.", NamedTextColor.RED));
+            messages.send(player, "arena.unknown-team", "input", args[0]);
             return true;
         }
 
@@ -55,8 +56,7 @@ public final class SetArenaCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2) {
             Float resolved = yawFor(args[1]);
             if (resolved == null) {
-                player.sendMessage(Component.text("Unknown direction \"" + args[1] + "\". "
-                        + "Use north, south, east, west or a diagonal.", NamedTextColor.RED));
+                messages.send(player, "arena.unknown-direction", "input", args[1]);
                 return true;
             }
             yaw = resolved;
@@ -68,12 +68,12 @@ public final class SetArenaCommand implements CommandExecutor, TabCompleter {
         Location second = wandManager.getSecondPoint(player.getUniqueId());
 
         if (first == null || second == null) {
-            player.sendMessage(Component.text("You must select two points with the Volleyball Wand (/volleywand) first.", NamedTextColor.RED));
+            messages.send(player, "arena.need-points");
             return true;
         }
 
         if (first.getWorld() == null || !first.getWorld().equals(second.getWorld())) {
-            player.sendMessage(Component.text("Both points must be in the same world.", NamedTextColor.RED));
+            messages.send(player, "arena.world-mismatch");
             return true;
         }
 
@@ -81,9 +81,9 @@ public final class SetArenaCommand implements CommandExecutor, TabCompleter {
         arenaManager.setArena(team, arena);
         positionManager.saveFacing(team, yaw);
 
-        player.sendMessage(Component.text("The ", NamedTextColor.GRAY)
-                .append(Component.text(team.getDisplayName(), team.getColor()))
-                .append(Component.text(" team's arena has been set, facing " + describeYaw(yaw) + "!", NamedTextColor.GRAY)));
+        messages.send(player, "arena.set",
+                "team", Messages.teamDisplay(team),
+                "facing", describeYaw(yaw));
         return true;
     }
 

@@ -1,9 +1,8 @@
 package me.heroicstudios.heroicvolleyball.command;
 
+import me.heroicstudios.heroicvolleyball.message.Messages;
 import me.heroicstudios.heroicvolleyball.party.Party;
 import me.heroicstudios.heroicvolleyball.party.PartyManager;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -20,15 +19,17 @@ import java.util.List;
 public final class PartyCommand implements CommandExecutor, TabCompleter {
 
     private final PartyManager partyManager;
+    private final Messages messages;
 
-    public PartyCommand(PartyManager partyManager) {
+    public PartyCommand(PartyManager partyManager, Messages messages) {
         this.partyManager = partyManager;
+        this.messages = messages;
     }
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage(Component.text("Only players can use party commands.", NamedTextColor.RED));
+            messages.send(sender, "party.players-only");
             return true;
         }
 
@@ -46,72 +47,75 @@ public final class PartyCommand implements CommandExecutor, TabCompleter {
 
     private void create(Player player) {
         if (partyManager.isInParty(player)) {
-            player.sendMessage(Component.text("You are already in a party. Use /partyleave first.", NamedTextColor.RED));
+            messages.send(player, "party.already-in");
             return;
         }
         Party party = partyManager.create(player);
-        player.sendMessage(Component.text("Party created! Invite players with /partyinvite <player>.", NamedTextColor.GREEN));
-        partyManager.sendMessage(party, Component.text(player.getName() + " created a party.", NamedTextColor.GRAY));
+        messages.send(player, "party.created");
+        partyManager.sendMessage(party, messages.get("party.created-broadcast", "player", player.getName()));
     }
 
     private void invite(Player player, String[] args) {
         Party party = partyManager.getParty(player);
         if (party == null) {
-            player.sendMessage(Component.text("You are not in a party. Use /partycreate first.", NamedTextColor.RED));
+            messages.send(player, "party.not-in");
             return;
         }
         if (!party.isLeader(player.getUniqueId())) {
-            player.sendMessage(Component.text("Only the party leader can invite players.", NamedTextColor.RED));
+            messages.send(player, "party.leader-only-invite");
             return;
         }
         if (args.length < 1) {
-            player.sendMessage(Component.text("Usage: /partyinvite <player>", NamedTextColor.RED));
+            messages.send(player, "party.invite-usage");
             return;
         }
 
         Player target = Bukkit.getPlayerExact(args[0]);
         if (target == null) {
-            player.sendMessage(Component.text("Player not found.", NamedTextColor.RED));
+            messages.send(player, "party.player-not-found");
             return;
         }
         if (target.equals(player)) {
-            player.sendMessage(Component.text("You are already in the party.", NamedTextColor.RED));
+            messages.send(player, "party.self-invite");
             return;
         }
         if (partyManager.isInParty(target)) {
-            player.sendMessage(Component.text(target.getName() + " is already in a party.", NamedTextColor.RED));
+            messages.send(player, "party.target-in-party", "player", target.getName());
             return;
         }
         if (party.size() >= partyManager.getMaxSize()) {
-            player.sendMessage(Component.text("Your party is full (" + partyManager.getMaxSize() + ").", NamedTextColor.RED));
+            messages.send(player, "party.full", "max", String.valueOf(partyManager.getMaxSize()));
             return;
         }
 
         partyManager.invite(player, target);
-        partyManager.sendMessage(party, Component.text(target.getName() + " joined the party. (" + party.size() + "/" + partyManager.getMaxSize() + ")", NamedTextColor.GREEN));
+        partyManager.sendMessage(party, messages.get("party.joined-broadcast",
+                "player", target.getName(),
+                "size", String.valueOf(party.size()),
+                "max", String.valueOf(partyManager.getMaxSize())));
     }
 
     private void leave(Player player) {
         Party party = partyManager.leave(player);
         if (party == null) {
-            player.sendMessage(Component.text("You are not in a party.", NamedTextColor.RED));
+            messages.send(player, "party.not-in");
             return;
         }
-        player.sendMessage(Component.text("You left the party.", NamedTextColor.YELLOW));
-        partyManager.sendMessage(party, Component.text(player.getName() + " left the party.", NamedTextColor.GRAY));
+        messages.send(player, "party.left");
+        partyManager.sendMessage(party, messages.get("party.left-broadcast", "player", player.getName()));
     }
 
     private void disband(Player player) {
         Party party = partyManager.getParty(player);
         if (party == null) {
-            player.sendMessage(Component.text("You are not in a party.", NamedTextColor.RED));
+            messages.send(player, "party.not-in");
             return;
         }
         if (!party.isLeader(player.getUniqueId())) {
-            player.sendMessage(Component.text("Only the party leader can disband the party.", NamedTextColor.RED));
+            messages.send(player, "party.not-leader-disband");
             return;
         }
-        partyManager.sendMessage(party, Component.text("The party has been disbanded.", NamedTextColor.YELLOW));
+        partyManager.sendMessage(party, messages.get("party.disbanded"));
         partyManager.disband(player);
     }
 

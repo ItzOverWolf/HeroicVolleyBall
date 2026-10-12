@@ -2,12 +2,11 @@ package me.heroicstudios.heroicvolleyball.command;
 
 import me.heroicstudios.heroicvolleyball.ball.BallManager;
 import me.heroicstudios.heroicvolleyball.game.SetupGui;
+import me.heroicstudios.heroicvolleyball.message.Messages;
 import me.heroicstudios.heroicvolleyball.music.MusicManager;
 import me.heroicstudios.heroicvolleyball.party.Party;
 import me.heroicstudios.heroicvolleyball.party.PartyManager;
 import me.heroicstudios.heroicvolleyball.score.ScoreManager;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -21,14 +20,16 @@ public final class StartGameCommand implements CommandExecutor {
     private final BallManager ballManager;
     private final ScoreManager scoreManager;
     private final MusicManager musicManager;
+    private final Messages messages;
 
     public StartGameCommand(PartyManager partyManager, SetupGui setupGui, BallManager ballManager,
-                            ScoreManager scoreManager, MusicManager musicManager) {
+                            ScoreManager scoreManager, MusicManager musicManager, Messages messages) {
         this.partyManager = partyManager;
         this.setupGui = setupGui;
         this.ballManager = ballManager;
         this.scoreManager = scoreManager;
         this.musicManager = musicManager;
+        this.messages = messages;
     }
 
     @Override
@@ -37,26 +38,26 @@ public final class StartGameCommand implements CommandExecutor {
             Party party = partyManager.getParty(player);
             if (party != null) {
                 if (party.size() < 2 || party.size() % 2 != 0) {
-                    sender.sendMessage(Component.text("A party needs an even number of players (2, 4, 6...) to start.", NamedTextColor.RED));
+                    messages.send(sender, "game.party-needs-even");
                     return true;
                 }
                 setupGui.open(player);
-                sender.sendMessage(Component.text("Choose your team and position to begin.", NamedTextColor.GREEN));
+                messages.send(sender, "game.party-choose");
                 return true;
             }
 
             setupGui.openSolo(player);
-            sender.sendMessage(Component.text("Choose your position to start a solo game.", NamedTextColor.GREEN));
+            messages.send(sender, "game.solo-choose");
             return true;
         }
 
         scoreManager.resetMatch();
         if (!ballManager.spawnAtStart()) {
-            sender.sendMessage(Component.text("Position 6 has not been set for either team yet.", NamedTextColor.RED));
+            messages.send(sender, "game.console-need-position");
             return true;
         }
         musicManager.startDefault();
-        sender.sendMessage(Component.text("The volleyball has been placed at Position 6. Use the shovel to serve!", NamedTextColor.GREEN));
+        messages.send(sender, "game.console-start");
         return true;
     }
 }

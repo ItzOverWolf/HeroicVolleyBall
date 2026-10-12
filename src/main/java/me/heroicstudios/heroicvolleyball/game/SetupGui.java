@@ -3,6 +3,7 @@ package me.heroicstudios.heroicvolleyball.game;
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
 import me.heroicstudios.heroicvolleyball.arena.Team;
 import me.heroicstudios.heroicvolleyball.gui.PositionLayout;
+import me.heroicstudios.heroicvolleyball.message.Messages;
 import me.heroicstudios.heroicvolleyball.party.Party;
 import me.heroicstudios.heroicvolleyball.party.PartyManager;
 import me.heroicstudios.heroicvolleyball.position.PositionManager;
@@ -233,7 +234,7 @@ public final class SetupGui implements Listener {
             }
             player.closeInventory();
             gameManager.startSolo(player, number);
-            player.sendMessage(Component.text("Solo game started at Position " + number + ".", NamedTextColor.GREEN));
+            plugin.getMessages().send(player, "game.solo-started", "position", String.valueOf(number));
             return;
         }
 
@@ -247,7 +248,7 @@ public final class SetupGui implements Listener {
                 return;
             }
             if (countTeam(setup, team) >= setup.maxPerTeam) {
-                player.sendMessage(Component.text("That team is full.", NamedTextColor.RED));
+                plugin.getMessages().send(player, "game.team-full");
                 return;
             }
             setup.teams.put(player.getUniqueId(), team);
@@ -266,12 +267,12 @@ public final class SetupGui implements Listener {
                 return;
             }
             if (occupantOf(setup, team, number) != null) {
-                player.sendMessage(Component.text("That position is taken.", NamedTextColor.RED));
+                plugin.getMessages().send(player, "game.position-taken");
                 return;
             }
             setup.positions.put(player.getUniqueId(), number);
             player.closeInventory();
-            player.sendMessage(Component.text("You chose Position " + number + ".", NamedTextColor.GREEN));
+            plugin.getMessages().send(player, "game.chosen", "position", String.valueOf(number));
             maybeStart(setup);
         }
     }
@@ -328,15 +329,16 @@ public final class SetupGui implements Listener {
         for (UUID uuid : setup.players) {
             Player player = Bukkit.getPlayer(uuid);
             if (player != null) {
-                player.sendMessage(Component.text("Game on! Your team has been assigned.", NamedTextColor.GREEN));
+                plugin.getMessages().send(player, "game.assigned");
             }
             Team team = teams.get(uuid);
             if (team != null) {
                 Player p = Bukkit.getPlayer(uuid);
                 if (p != null) {
+                    String teamTag = Messages.teamDisplay(team);
                     p.showTitle(net.kyori.adventure.title.Title.title(
-                            Component.text(team.getDisplayName() + " Team", team.getColor()),
-                            Component.text("Good luck!", NamedTextColor.GRAY)));
+                            plugin.getMessages().get("game.assigned-title", "team", teamTag),
+                            plugin.getMessages().get("game.assigned-subtitle", "team", teamTag)));
                 }
             }
         }

@@ -18,10 +18,12 @@ import org.jetbrains.annotations.Nullable;
 
 public final class ToolManager {
 
+    private final HeroicVolleyBall plugin;
     private final NamespacedKey toolKey;
     private final NamespacedKey tierKey;
 
     public ToolManager(HeroicVolleyBall plugin) {
+        this.plugin = plugin;
         this.toolKey = new NamespacedKey(plugin, "volley_tool");
         this.tierKey = new NamespacedKey(plugin, "volley_tier");
     }
@@ -128,8 +130,9 @@ public final class ToolManager {
         VolleyTier next = getTier(item).next();
         player.getInventory().setItemInMainHand(create(tool, next));
         String label = tool == VolleyTool.SWORD ? "Spike" : "Up";
-        player.sendMessage(Component.text(label + " power set to ", NamedTextColor.GRAY)
-                .append(Component.text(next.getDisplayName(), next.getColor())));
+        String coloredTier = "<" + next.getColor().asHexString() + ">" + next.getDisplayName()
+                + "</" + next.getColor().asHexString() + ">";
+        plugin.getMessages().send(player, "tool.power-set", "tool", label, "tier", coloredTier);
     }
 
     public boolean isCycleable(VolleyTool tool) {
