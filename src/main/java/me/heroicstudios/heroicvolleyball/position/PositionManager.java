@@ -6,7 +6,9 @@ import java.util.UUID;
 
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
 import me.heroicstudios.heroicvolleyball.arena.Team;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 import org.jetbrains.annotations.Nullable;
 
@@ -38,6 +40,34 @@ public final class PositionManager {
         plugin.getConfig().set(path + ".y", location.getBlockY());
         plugin.getConfig().set(path + ".z", location.getBlockZ());
         plugin.saveConfig();
+    }
+
+    public @Nullable Location getPosition(Team team, int positionNumber) {
+        ConfigurationSection root = plugin.getConfig().getConfigurationSection("arenas");
+        if (root == null) {
+            return null;
+        }
+
+        for (String arenaName : root.getKeys(false)) {
+            String base = "arenas." + arenaName + "." + team.name().toLowerCase() + ".position_" + positionNumber;
+            String worldName = plugin.getConfig().getString(base + ".world");
+            if (worldName == null) {
+                continue;
+            }
+
+            World world = Bukkit.getWorld(worldName);
+            if (world == null) {
+                continue;
+            }
+
+            return new Location(
+                    world,
+                    plugin.getConfig().getInt(base + ".x"),
+                    plugin.getConfig().getInt(base + ".y"),
+                    plugin.getConfig().getInt(base + ".z")
+            );
+        }
+        return null;
     }
 
     public static final class PositionSelection {

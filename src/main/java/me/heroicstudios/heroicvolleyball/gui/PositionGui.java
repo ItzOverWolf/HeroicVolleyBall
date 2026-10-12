@@ -21,14 +21,14 @@ public final class PositionGui implements InventoryHolder {
 
     public PositionGui(Team team) {
         this.team = team;
-        this.inventory = Bukkit.createInventory(this, 27, Component.text("Select Position", NamedTextColor.DARK_GRAY));
+        this.inventory = Bukkit.createInventory(this, 54, Component.text("Select Position", NamedTextColor.DARK_GRAY));
         fillFrame();
         fillPositions();
     }
 
     private void fillFrame() {
         ItemStack frameItem = createItem(Material.GRAY_STAINED_GLASS_PANE, NamedTextColor.GRAY, "");
-        for (int i = 0; i < 27; i++) {
+        for (int i = 0; i < 54; i++) {
             if (isFrameSlot(i)) {
                 inventory.setItem(i, frameItem);
             }
@@ -36,20 +36,18 @@ public final class PositionGui implements InventoryHolder {
     }
 
     private boolean isFrameSlot(int slot) {
-        if (slot >= 0 && slot <= 9) return true;
-        if (slot == 17 || slot == 18 || slot == 26) return true;
-        return false;
+        return slot < 9 || slot > 44 || slot % 9 == 0 || slot % 9 == 8;
     }
 
     private void fillPositions() {
         Material glass = team == Team.RED ? Material.RED_STAINED_GLASS_PANE : Material.BLUE_STAINED_GLASS_PANE;
 
-        inventory.setItem(10, createItem(glass, NamedTextColor.WHITE, "Pos 4"));
-        inventory.setItem(11, createItem(glass, NamedTextColor.WHITE, "Pos 3"));
-        inventory.setItem(12, createItem(glass, NamedTextColor.WHITE, "Pos 2"));
-        inventory.setItem(14, createItem(glass, NamedTextColor.WHITE, "Pos 5"));
-        inventory.setItem(15, createItem(glass, NamedTextColor.WHITE, "Pos 6"));
-        inventory.setItem(16, createItem(glass, NamedTextColor.WHITE, "Pos 1"));
+        inventory.setItem(11, createItem(glass, NamedTextColor.WHITE, "Pos 4"));
+        inventory.setItem(13, createItem(glass, NamedTextColor.WHITE, "Pos 3"));
+        inventory.setItem(15, createItem(glass, NamedTextColor.WHITE, "Pos 2"));
+        inventory.setItem(29, createItem(glass, NamedTextColor.WHITE, "Pos 5"));
+        inventory.setItem(31, createItem(glass, NamedTextColor.WHITE, "Pos 6"));
+        inventory.setItem(33, createItem(glass, NamedTextColor.WHITE, "Pos 1"));
     }
 
     private ItemStack createItem(Material material, NamedTextColor color, String name) {

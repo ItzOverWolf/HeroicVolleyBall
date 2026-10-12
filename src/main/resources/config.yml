@@ -1,3 +1,30 @@
 # HeroicVolleyBall configuration
 # Arena regions are stored here automatically when you run /setarena.
 arenas: {}
+
+# Ball physics and rule settings. Reload live with /volleyreload.
+ball:
+  # Maximum number of touches a team gets per possession.
+  max-touches: 3
+  # Downward acceleration applied to the ball every tick (blocks/tick^2).
+  gravity: 0.045
+  # Fraction of velocity kept every tick (air resistance). 1.0 = no drag.
+  air-drag: 0.99
+  # Global multiplier applied to every tool impulse.
+  velocity-scale: 1.0
+  # Maximum speed any component of the ball may reach.
+  max-velocity: 3.0
+  # Downward speed applied when a spear spike lands from above.
+  spike-downward: 0.8
+  # Downward speed applied when the ball touches a blocking shield.
+  shield-deflect: 0.9
+  # Per-tier tool power.
+  power:
+    shovel:
+      wooden: 0.6
+      iron: 0.9
+      diamond: 1.2
+    spike:
+      wooden: 1.0
+      iron: 1.4
+      diamond: 1.8

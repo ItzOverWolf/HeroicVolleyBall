@@ -14,6 +14,22 @@ commands:
     description: Sets the selected region as a team's arena
     usage: /setarena <red|blue>
     permission: heroicvolleyball.setarena
+  spawnball:
+    description: Spawns the volleyball at your location
+    usage: /spawnball
+    permission: heroicvolleyball.spawnball
+  startgame:
+    description: Spawns the volleyball near Position 6 to start a game
+    usage: /startgame
+    permission: heroicvolleyball.startgame
+  volleygive:
+    description: Gives a volleyball tool
+    usage: /volleygive <shovel|spear|shield> [wooden|iron|diamond]
+    permission: heroicvolleyball.volleygive
+  volleyreload:
+    description: Reloads the HeroicVolleyBall configuration
+    usage: /volleyreload
+    permission: heroicvolleyball.volleyreload
 
 permissions:
   heroicvolleyball.volleywand:
@@ -21,4 +37,16 @@ permissions:
     default: op
   heroicvolleyball.setarena:
     description: Allows use of /setarena
+    default: op
+  heroicvolleyball.spawnball:
+    description: Allows use of /spawnball
+    default: op
+  heroicvolleyball.startgame:
+    description: Allows use of /startgame
+    default: op
+  heroicvolleyball.volleygive:
+    description: Allows use of /volleygive
+    default: op
+  heroicvolleyball.volleyreload:
+    description: Allows use of /volleyreload
     default: op
