@@ -1,5 +1,6 @@
 package me.heroicstudios.heroicvolleyball.ball;
 
+import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import me.heroicstudios.heroicvolleyball.tool.ToolManager;
 import me.heroicstudios.heroicvolleyball.tool.VolleyTool;
 import org.bukkit.entity.Player;
@@ -19,6 +20,16 @@ public final class BallListener implements Listener {
         this.toolManager = toolManager;
     }
 
+    @EventHandler
+    public void onPreAttack(PrePlayerAttackEntityEvent event) {
+        if (!ballManager.isBall(event.getAttacked())) {
+            return;
+        }
+
+        event.setCancelled(true);
+        handleHit(event.getPlayer());
+    }
+
     @EventHandler(ignoreCancelled = true)
     public void onDamage(EntityDamageEvent event) {
         if (event.getDamageSource().getDirectEntity() != null
@@ -33,19 +44,17 @@ public final class BallListener implements Listener {
 
         event.setCancelled(true);
 
-        if (!(event instanceof EntityDamageByEntityEvent byEntity)) {
-            return;
+        if (event instanceof EntityDamageByEntityEvent byEntity && byEntity.getDamager() instanceof Player player) {
+            handleHit(player);
         }
-        if (!(byEntity.getDamager() instanceof Player player)) {
-            return;
-        }
+    }
 
+    private void handleHit(Player player) {
         ItemStack item = player.getInventory().getItemInMainHand();
         VolleyTool tool = toolManager.getTool(item);
         if (tool == null) {
             return;
         }
-
         ballManager.onPlayerHit(player, tool, toolManager.getTier(item));
     }
 }

@@ -14,8 +14,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
-import org.bukkit.attribute.Attribute;
-import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.SulfurCube;
@@ -36,6 +34,7 @@ public final class BallManager {
     private final ArenaManager arenaManager;
 
     private @Nullable SulfurCube ball;
+    private @Nullable Location current;
     private @Nullable BukkitTask task;
     private Vector motion = new Vector();
 
@@ -146,9 +145,9 @@ public final class BallManager {
             cube.setNoDamageTicks(0);
             cube.setCustomNameVisible(true);
             cube.setEquipped(new ItemStack(Material.RED_WOOL));
-            disableDrag(cube);
         });
 
+        this.current = location.clone();
         this.motion = new Vector();
         this.state = State.IDLE;
         this.touches = maxTouches;
@@ -188,8 +187,7 @@ public final class BallManager {
 
         double power = shovelPower(tier) * velocityScale;
         motion = new Vector(0.0, power, 0.0);
-        ball.setVelocity(motion);
-        wasOnGround = true;
+        wasOnGround = false;
         updateName();
     }
 
@@ -203,7 +201,7 @@ public final class BallManager {
             touches--;
         }
 
-        Location ballLocation = ball.getLocation();
+        Location ballLocation = current != null ? current : ball.getLocation();
         Location eye = player.getEyeLocation();
 
         Vector direction = ballLocation.toVector().subtract(eye.toVector());
@@ -228,47 +226,108 @@ public final class BallManager {
         }
 
         motion = velocity;
-        ball.setVelocity(motion);
-        wasOnGround = true;
+        wasOnGround = false;
         updateName();
     }
 
     private void tick() {
-        if (ball == null || !ball.isValid() || ball.isDead()) {
+        if (ball == null || !ball.isValid() || ball.isDead() || current == null) {
             cleanup();
             return;
         }
 
-        applyMotion();
+        integrate();
         handleShield();
         updatePossession();
-        handleGround();
+        step();
         updateName();
     }
 
-    private void applyMotion() {
+    private void integrate() {
         motion.setY(motion.getY() - gravity);
         motion.multiply(airDrag);
+    }
 
-        if (ball.isOnGround()) {
+    private void step() {
+        World world = current.getWorld();
+        if (world == null) {
+            return;
+        }
+
+        clamp(motion);
+        Location next = current.clone().add(motion);
+
+        int blockX = next.getBlockX();
+        int blockZ = next.getBlockZ();
+        int startY = (int) Math.floor(next.getY());
+
+        int floorTop = Integer.MIN_VALUE;
+        for (int y = startY; y >= startY - 4; y--) {
+            if (!world.getBlockAt(blockX, y, blockZ).isPassable()) {
+                floorTop = y + 1;
+                break;
+            }
+        }
+
+        boolean onGround = false;
+        if (floorTop != Integer.MIN_VALUE
+                && next.getY() <= floorTop
+                && current.getY() >= floorTop - 0.6) {
+            next.setY(floorTop);
+            onGround = true;
+        }
+
+        if (onGround) {
             if (motion.getY() < 0.0) {
                 motion.setY(0.0);
             }
             motion.setX(motion.getX() * 0.5);
             motion.setZ(motion.getZ() * 0.5);
+
+            if (state == State.RALLY && !wasOnGround) {
+                resetRally();
+            }
         }
 
-        clamp(motion);
-        ball.setVelocity(motion);
+        wasOnGround = onGround;
+        current = next;
+        ball.teleport(next);
+    }
+
+    private void handleShield() {
+        for (Player player : current.getWorld().getPlayers()) {
+            if (player.getLocation().distanceSquared(current) > 4.0) {
+                continue;
+            }
+            if (!player.isBlocking()) {
+                continue;
+            }
+            motion.setX(motion.getX() * 0.2);
+            motion.setZ(motion.getZ() * 0.2);
+            motion.setY(-shieldDeflect * velocityScale);
+            break;
+        }
+    }
+
+    private void updatePossession() {
+        Team currentTeam = arenaManager.getArenaAt(current);
+        if (currentTeam == possession) {
+            return;
+        }
+        possession = currentTeam;
+        touches = maxTouches;
+    }
+
+    private void resetRally() {
+        state = State.IDLE;
+        touches = maxTouches;
+        motion = new Vector();
     }
 
     private void clamp(Vector vector) {
-        double x = clampComponent(vector.getX());
-        double y = clampComponent(vector.getY());
-        double z = clampComponent(vector.getZ());
-        vector.setX(x);
-        vector.setY(y);
-        vector.setZ(z);
+        vector.setX(clampComponent(vector.getX()));
+        vector.setY(clampComponent(vector.getY()));
+        vector.setZ(clampComponent(vector.getZ()));
     }
 
     private double clampComponent(double value) {
@@ -279,50 +338,6 @@ public final class BallManager {
             return -maxVelocity;
         }
         return value;
-    }
-
-    private void handleShield() {
-        Location location = ball.getLocation();
-        for (Player player : ball.getWorld().getPlayers()) {
-            if (player.getLocation().distanceSquared(location) > 4.0) {
-                continue;
-            }
-            if (!player.isBlocking()) {
-                continue;
-            }
-            motion.setX(motion.getX() * 0.2);
-            motion.setZ(motion.getZ() * 0.2);
-            motion.setY(-shieldDeflect * velocityScale);
-            ball.setVelocity(motion);
-            wasOnGround = true;
-            break;
-        }
-    }
-
-    private void updatePossession() {
-        Team current = arenaManager.getArenaAt(ball.getLocation());
-        if (current == possession) {
-            return;
-        }
-        possession = current;
-        touches = maxTouches;
-    }
-
-    private void handleGround() {
-        boolean onGround = ball.isOnGround();
-        if (onGround && !wasOnGround && state == State.RALLY) {
-            resetRally();
-        }
-        wasOnGround = onGround;
-    }
-
-    private void resetRally() {
-        state = State.IDLE;
-        touches = maxTouches;
-        motion = new Vector();
-        if (ball != null) {
-            ball.setVelocity(motion);
-        }
     }
 
     private void updateName() {
@@ -357,17 +372,6 @@ public final class BallManager {
         };
     }
 
-    private void disableDrag(SulfurCube cube) {
-        AttributeInstance air = cube.getAttribute(Attribute.AIR_DRAG_MODIFIER);
-        if (air != null) {
-            air.setBaseValue(-1.0);
-        }
-        AttributeInstance friction = cube.getAttribute(Attribute.FRICTION_MODIFIER);
-        if (friction != null) {
-            friction.setBaseValue(-1.0);
-        }
-    }
-
     private void startTask() {
         if (task != null) {
             return;
@@ -380,11 +384,13 @@ public final class BallManager {
             ball.remove();
             ball = null;
         }
+        current = null;
         motion = new Vector();
     }
 
     private void cleanup() {
         ball = null;
+        current = null;
         motion = new Vector();
         if (task != null) {
             task.cancel();
@@ -401,5 +407,7 @@ public final class BallManager {
             ball.remove();
             ball = null;
         }
+        current = null;
+        motion = new Vector();
     }
 }
