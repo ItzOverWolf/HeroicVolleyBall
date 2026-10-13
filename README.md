@@ -49,7 +49,10 @@ per team, and rally a sulfur-cube ball using shovels, swords and shields.
 
 - **Shovel (Up)** – bumps the ball up and slightly forward.
 - **Sword (Spike)** – spikes the ball forward; hitting from above drives it down.
-- **Shield (Block)** – deflects the ball downward.
+- **Shield (Block)** – left-click the middle/top of the ball to knock it forward and
+  down. Hold right-click (shield raised) underneath the ball to catch it and pop it
+  straight up like a free ball. Shield hits never count as a team touch, and after a
+  deflect/catch the shield recharges for a few seconds before it can be used again.
 - Sneak + right-click a shovel or sword to cycle its power tier (wooden, iron, diamond).
 
 A team gets three touches per possession. Hitting the ball while it is over the
@@ -83,12 +86,44 @@ Identifier: `hvb`
 
 ## Configuration
 
+Your data is split across three files, so you can never lose your court by
+editing or regenerating a config:
+
+- `config.yml` – plugin settings only. New settings added in later versions are
+  inserted into existing files automatically on startup and on `/volleyreload`
+  (existing values are never overwritten), so you never need to delete it.
+- `arenas.yml` – the two court regions set with `/setarena`.
+- `positions.yml` – positions `1`–`6` per team plus the facing direction.
+
 `config.yml` highlights:
 
 - `ball.*` – size, `max-touches`, `gravity`, `air-drag`, `velocity-scale`,
   `max-velocity`, spike speeds, `shovel-forward`, `shield-deflect`, `bounce`,
   `serve-reset-delay`, `show-name`, and per-tier `power`.
-- `game.points-per-set`, `game.sets-to-win`, `game.opponent-touch-penalty`.
+- `ball.shield.*` – deflect/forward speeds on a middle/top shield hit, the upward
+  power and reach/height of the bottom shield catch, and the shield cooldown in
+  ticks after any shield use.
+- `ball.sulfur-cube` – `true` keeps the vanilla sulfur cube with the item inside
+  it; `false` hides the cube and shows only the configured item floating as the
+  ball. Changeable live with `/volleyreload`.
+- `ball.material` – the ball's appearance (and the item you pick up). Any
+  block/item material name works (`GRAY_WOOL`, `SLIME_BALL`, `DIAMOND`,
+  `PLAYER_HEAD`, ...). Wools tint red/blue by which court the ball is over.
+- `ball.texture` – base64 skin value used when `ball.material` is `PLAYER_HEAD`,
+  so you can make the ball any custom head (leave `""` for a plain head).
+- `ball.pickup-enabled` – when `true`, a player can right-click the resting ball
+  (`Serve` state) with an empty hand to pick it up into their inventory and then
+  right-click any block in the ball's own court to place it back. Only allowed
+  before the round starts and once per serve; the ball cannot be picked up again
+  once placed or while the rally is live.
+
+### Ball pickup & placement
+
+1. Ball is resting (not yet hit) → right-click it with an empty hand to pick it up.
+2. Right-click a block **inside the ball's own team court** to place it back there.
+3. Start the round as normal (first shovel bumps it). Placing is one-time per serve.
+- `game.points-per-set`, `game.sets-to-win`, `game.opponent-touch-penalty`,
+  `game.point-countdown`, `game.round-countdown`.
 - `game.effects.{enabled,jump-boost-level,speed-level}` – infinite potion effects
   while a game runs (set a level to `0` to disable it).
 - `game.titles`, `game.broadcast-points` – on-screen titles and chat announcements.
@@ -99,4 +134,19 @@ Identifier: `hvb`
 
 `messages.yml` uses [MiniMessage](https://docs.advntr.dev/minimessage/format.html)
 formatting. Placeholders are written as `{name}` (for example `{team}`, `{position}`,
-`{location}`). The `prefix` key is prepended to command feedback.
+`{location}`). The `prefix` key is prepended to command feedback. Like `config.yml`,
+new message keys are merged into existing files automatically on startup/`/volleyreload`.
+
+### How to add a new setting (the safe way)
+
+To add e.g. a `game.max-scoring-errors` toggle later without making players reset
+their config:
+
+1. Add the key + default to `src/main/resources/config.yml` (or `messages.yml`),
+   e.g. `game.max-scoring-errors: 7`.
+2. That's it. `HeroicVolleyBall.syncConfigDefaults()` (config) and
+   `Messages.reload()` now both call `ConfigDefaults.merge(...)`, which copies any
+   missing key from the bundled file into the player's existing file on load.
+3. Read it anywhere with `plugin.getConfig().getInt("game.max-scoring-errors", 7)`.
+
+Never delete a player's `config.yml` to push a default again – the merge handles it.

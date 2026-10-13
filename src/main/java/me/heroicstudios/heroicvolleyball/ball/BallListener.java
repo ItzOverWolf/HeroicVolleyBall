@@ -6,8 +6,12 @@ import me.heroicstudios.heroicvolleyball.tool.VolleyTool;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
 public final class BallListener implements Listener {
@@ -47,6 +51,43 @@ public final class BallListener implements Listener {
         if (event instanceof EntityDamageByEntityEvent byEntity && byEntity.getDamager() instanceof Player player) {
             handleHit(player);
         }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onInteractBall(PlayerInteractEntityEvent event) {
+        if (!ballManager.isBall(event.getRightClicked())) {
+            return;
+        }
+
+        event.setCancelled(true);
+        Player player = event.getPlayer();
+        ItemStack item = player.getInventory().getItemInMainHand();
+        if (!item.getType().isAir()) {
+            return;
+        }
+        if (!ballManager.canPickupBall()) {
+            ballManager.sendPickupDenied(player);
+            return;
+        }
+        ballManager.pickupBall(player);
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onPlaceBall(PlayerInteractEvent event) {
+        if (event.getHand() != EquipmentSlot.HAND) {
+            return;
+        }
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getClickedBlock() == null) {
+            return;
+        }
+
+        ItemStack item = event.getPlayer().getInventory().getItemInMainHand();
+        if (!ballManager.isBallItem(item)) {
+            return;
+        }
+
+        event.setCancelled(true);
+        ballManager.placeBall(event.getPlayer(), event.getClickedBlock());
     }
 
     private void handleHit(Player player) {

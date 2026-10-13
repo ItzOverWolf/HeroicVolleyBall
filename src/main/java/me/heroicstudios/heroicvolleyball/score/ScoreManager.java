@@ -3,6 +3,7 @@ package me.heroicstudios.heroicvolleyball.score;
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
 import me.heroicstudios.heroicvolleyball.arena.Team;
+import me.heroicstudios.heroicvolleyball.game.Countdown;
 import me.heroicstudios.heroicvolleyball.game.GameManager;
 import me.heroicstudios.heroicvolleyball.message.Messages;
 import me.heroicstudios.heroicvolleyball.music.MusicManager;
@@ -34,6 +35,7 @@ public final class ScoreManager implements Listener {
 
     private int pointsPerSet = 25;
     private int setsToWin = 2;
+    private int roundCountdown = 5;
     private boolean scoreboardEnabled = true;
     private boolean showTitles = true;
     private boolean broadcastPoints = true;
@@ -43,6 +45,8 @@ public final class ScoreManager implements Listener {
     private int redSets;
     private int blueSets;
     private boolean matchOver;
+    private boolean roundTransition;
+    private int roundToken;
 
     private Scoreboard board;
     private Objective objective;
@@ -82,9 +86,14 @@ public final class ScoreManager implements Listener {
         return matchOver;
     }
 
+    public boolean isRoundTransition() {
+        return roundTransition;
+    }
+
     public void loadConfig() {
         this.pointsPerSet = Math.max(1, plugin.getConfig().getInt("game.points-per-set", 25));
         this.setsToWin = Math.max(1, plugin.getConfig().getInt("game.sets-to-win", 2));
+        this.roundCountdown = Math.max(0, plugin.getConfig().getInt("game.round-countdown", 5));
         this.scoreboardEnabled = plugin.getConfig().getBoolean("scoreboard.enabled", true);
         this.showTitles = plugin.getConfig().getBoolean("game.titles", true);
         this.broadcastPoints = plugin.getConfig().getBoolean("game.broadcast-points", true);
@@ -130,7 +139,7 @@ public final class ScoreManager implements Listener {
     }
 
     public void addPoint(Team team) {
-        if (matchOver) {
+        if (matchOver || roundTransition) {
             return;
         }
 
@@ -211,13 +220,42 @@ public final class ScoreManager implements Listener {
             }
             playTeamSound(team, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
             if (gameManager != null) {
+                gameManager.pauseBall();
                 gameManager.end();
             }
+        } else {
+            startRoundBreak(team);
         }
     }
 
+    private void startRoundBreak(Team nextServer) {
+        roundTransition = true;
+        int token = ++roundToken;
+        int nextRound = redSets + blueSets + 1;
+        if (roundCountdown > 0 && gameManager != null) {
+            gameManager.pauseBall();
+        }
+        Countdown.run(plugin, roundCountdown, "game.round-countdown-title", "game.round-countdown-subtitle",
+                () -> {
+                    if (token != roundToken) {
+                        return;
+                    }
+                    roundTransition = false;
+                    Messages messages = plugin.getMessages();
+                    if (broadcastPoints) {
+                        Bukkit.broadcast(messages.get("game.round-start",
+                                "round", String.valueOf(nextRound),
+                                "team", Messages.teamDisplay(nextServer)));
+                    }
+                    if (gameManager != null) {
+                        gameManager.startNextRound(nextServer);
+                    }
+                },
+                "round", String.valueOf(nextRound));
+    }
+
     private void showTitle(Component title, Component subtitle) {
-        Title display = Title.title(title, subtitle);
+        Title display = Messages.noFade(title, subtitle);
         for (Player player : Bukkit.getOnlinePlayers()) {
             player.showTitle(display);
         }
@@ -248,6 +286,8 @@ public final class ScoreManager implements Listener {
         redSets = 0;
         blueSets = 0;
         matchOver = false;
+        roundTransition = false;
+        roundToken++;
         redraw();
         applyAll();
     }

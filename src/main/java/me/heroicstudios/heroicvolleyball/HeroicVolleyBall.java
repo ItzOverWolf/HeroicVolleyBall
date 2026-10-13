@@ -15,6 +15,7 @@ import me.heroicstudios.heroicvolleyball.command.VolleyReloadCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyWandCommand;
 import me.heroicstudios.heroicvolleyball.game.GameManager;
 import me.heroicstudios.heroicvolleyball.game.SetupGui;
+import me.heroicstudios.heroicvolleyball.game.CoinFlipGui;
 import me.heroicstudios.heroicvolleyball.gui.GuiListener;
 import me.heroicstudios.heroicvolleyball.hook.VolleyballPlaceholders;
 import me.heroicstudios.heroicvolleyball.listener.ArenaListener;
@@ -25,17 +26,12 @@ import me.heroicstudios.heroicvolleyball.position.PositionManager;
 import me.heroicstudios.heroicvolleyball.score.ScoreManager;
 import me.heroicstudios.heroicvolleyball.tool.ToolListener;
 import me.heroicstudios.heroicvolleyball.tool.ToolManager;
+import me.heroicstudios.heroicvolleyball.util.ConfigDefaults;
 import me.heroicstudios.heroicvolleyball.wand.WandListener;
 import me.heroicstudios.heroicvolleyball.wand.WandManager;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 
 public final class HeroicVolleyBall extends JavaPlugin {
 
@@ -46,6 +42,7 @@ public final class HeroicVolleyBall extends JavaPlugin {
     private ToolManager toolManager;
     private PartyManager partyManager;
     private GameManager gameManager;
+    private CoinFlipGui coinFlipGui;
     private SetupGui setupGui;
     private BallManager ballManager;
     private ScoreManager scoreManager;
@@ -64,10 +61,11 @@ public final class HeroicVolleyBall extends JavaPlugin {
         this.guiListener = new GuiListener(positionManager, messages);
         this.toolManager = new ToolManager(this);
         this.partyManager = new PartyManager(this);
-        this.gameManager = new GameManager(this, arenaManager, positionManager, toolManager, partyManager);
+        this.coinFlipGui = new CoinFlipGui(this, messages);
+        this.gameManager = new GameManager(this, arenaManager, positionManager, toolManager, partyManager, coinFlipGui);
         this.musicManager = new MusicManager(this);
         this.scoreManager = new ScoreManager(this, arenaManager, musicManager);
-        this.ballManager = new BallManager(this, arenaManager, scoreManager, gameManager);
+        this.ballManager = new BallManager(this, arenaManager, scoreManager, gameManager, toolManager);
         this.gameManager.bind(ballManager, scoreManager, musicManager);
         this.setupGui = new SetupGui(this, gameManager, partyManager, positionManager);
 
@@ -77,6 +75,7 @@ public final class HeroicVolleyBall extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ToolListener(toolManager), this);
         getServer().getPluginManager().registerEvents(new BallListener(ballManager, toolManager), this);
         getServer().getPluginManager().registerEvents(setupGui, this);
+        getServer().getPluginManager().registerEvents(coinFlipGui, this);
         getServer().getPluginManager().registerEvents(scoreManager, this);
         scoreManager.applyAll();
 
@@ -128,26 +127,8 @@ public final class HeroicVolleyBall extends JavaPlugin {
     }
 
     public void syncConfigDefaults() {
-        try (InputStream in = getResource("config.yml")) {
-            if (in == null) {
-                return;
-            }
-            YamlConfiguration defaults = YamlConfiguration.loadConfiguration(
-                    new InputStreamReader(in, StandardCharsets.UTF_8));
-            FileConfiguration config = getConfig();
-            boolean changed = false;
-            for (String key : defaults.getKeys(true)) {
-                if (defaults.isConfigurationSection(key) || config.contains(key)) {
-                    continue;
-                }
-                config.set(key, defaults.get(key));
-                changed = true;
-            }
-            if (changed) {
-                saveConfig();
-            }
-        } catch (IOException e) {
-            getLogger().warning("Could not sync missing config defaults: " + e.getMessage());
+        if (ConfigDefaults.merge(getResource("config.yml"), getConfig())) {
+            saveConfig();
         }
     }
 
@@ -216,9 +197,7 @@ public final class HeroicVolleyBall extends JavaPlugin {
         return gameManager;
     }
 
-    public SetupGui getSetupGui() {
-        return setupGui;
-    }
+    public SetupGui getSetupGui() {return setupGui;}
 
     public Messages getMessages() {
         return messages;

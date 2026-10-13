@@ -1,9 +1,12 @@
 package me.heroicstudios.heroicvolleyball.message;
 
 import java.io.File;
+import java.io.IOException;
+import java.time.Duration;
 
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
 import me.heroicstudios.heroicvolleyball.arena.Team;
+import me.heroicstudios.heroicvolleyball.util.ConfigDefaults;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.title.Title;
@@ -30,6 +33,13 @@ public final class Messages {
             plugin.saveResource("messages.yml", false);
         }
         this.config = YamlConfiguration.loadConfiguration(file);
+        if (ConfigDefaults.merge(plugin.getResource("messages.yml"), config)) {
+            try {
+                config.save(file);
+            } catch (IOException e) {
+                plugin.getLogger().warning("Could not save messages.yml: " + e.getMessage());
+            }
+        }
     }
 
     public String raw(String key) {
@@ -76,6 +86,11 @@ public final class Messages {
 
     public Title title(String key, String... placeholders) {
         return Title.title(get(key + ".title", placeholders), get(key + ".subtitle", placeholders));
+    }
+
+    public static Title noFade(Component title, Component subtitle) {
+        return Title.title(title, subtitle,
+                Title.Times.times(Duration.ZERO, Duration.ofSeconds(2), Duration.ofMillis(500)));
     }
 
     public static String teamDisplay(Team team) {

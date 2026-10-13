@@ -1,10 +1,13 @@
 # HeroicVolleyBall configuration
-# Arena regions are stored here automatically when you run /setarena.
-arenas: {}
-
-# Per-team facing direction (yaw in degrees) applied when players are teleported.
-# Set with /setarena <red|blue> <direction>; 0 = south, 90 = west, 180 = north, 270 = east.
-facing: {}
+#
+# New settings added in later versions are inserted here automatically on
+# startup and on /volleyreload - you never need to delete this file to get
+# them. Your own values are never overwritten.
+#
+# Court coordinates are NOT stored here. They live in their own files so they
+# survive config resets:
+#   - arenas.yml    -> the two team court regions (/setarena)
+#   - positions.yml -> position 1-6 spots + facing direction (/volleywand)
 
 # Ball physics and rule settings. Reload live with /volleyreload.
 ball:
@@ -35,8 +38,26 @@ ball:
   # Fraction of the shovel's upward power added as forward drift (0 = straight
   # up, 0.25 = slightly forward in the direction you are facing).
   shovel-forward: 0.25
-  # Downward speed applied when the ball is hit with a shield.
-  shield-deflect: 0.9
+  # Shield (Block) tool behaviour. The shield never uses a team touch.
+  # - Left-click a ball at its middle or top to knock it forward and down.
+  # - Hold right-click (shield raised) underneath the ball to catch it and pop
+  #   it up like a free ball - no timing click, just aim at the bottom.
+  # After any shield use the shield is on cooldown and can't be used again
+  # until it recharges; the shovel and sword still work, so you catch with the
+  # shield and follow up with the shovel.
+  shield:
+    # Downward speed applied when deflecting a middle/top hit (0 = straight down).
+    deflect: 0.9
+    # Forward speed added in the direction you are facing when deflecting.
+    forward: 0.6
+    # Upward speed of the ball when caught from below.
+    catch-power: 0.8
+    # Max horizontal distance (blocks) between the catching player and the ball.
+    catch-reach: 2.5
+    # Max vertical gap (blocks) between the player's eye and the ball's bottom.
+    catch-height: 3.0
+    # Ticks the shield is unusable after a deflect or catch (20 ticks = 1 second).
+    cooldown: 100
   # Fraction of downward speed kept as a bounce when the ball lands (0 = none).
   bounce: 0.3
   # Ticks to wait after the ball lands before the point is reset to a serve.
@@ -44,6 +65,26 @@ ball:
   serve-reset-delay: 10
   # If true, the floating name above the ball (Serve / touches) is shown.
   show-name: true
+  # If true, players can right-click the ball with an empty hand to pick it up
+  # into their inventory, then right-click a block in the ball's team area to
+  # place it back. Only allowed while the round has not started (the ball has
+  # not been hit), and only once per serve - after placing it cannot be picked
+  # up again until the next point resets the ball.
+  pickup-enabled: true
+  # If true, the ball is a vanilla sulfur cube. The "equipped" item below sits
+  # inside it. If false, the cube is hidden and only the item is shown floating
+  # as the ball (more of a custom/modded look). You can change this live with
+  # /volleyreload - the ball already in play updates instantly.
+  sulfur-cube: true
+  # What the ball (and the item you pick up) looks like. Any block or item
+  # material name works (for example GRAY_WOOL, SLIME_BALL, DIAMOND, GLOWSTONE,
+  # PLAYER_HEAD). If the material is a wool (_WOOL), the ball is coloured by
+  # possession: red over a red court, blue over a blue court, gray elsewhere.
+  material: GRAY_WOOL
+  # Custom player head skin, shown when material is PLAYER_HEAD. This is the
+  # base64 "textures" value from your skin (the part after the JSON value).
+  # Leave empty to use a normal Steve/head texture for this material.
+  texture: ""
   # Per-tier tool power.
   power:
     shovel:
@@ -75,6 +116,10 @@ game:
   titles: true
   # Announce points, sets and match wins in chat.
   broadcast-points: true
+  # Seconds counted down on screen before each serve after a point.
+  point-countdown: 3
+  # Seconds counted down on screen between sets (rounds).
+  round-countdown: 5
 
 # Sidebar scoreboard shown to every player.
 scoreboard:

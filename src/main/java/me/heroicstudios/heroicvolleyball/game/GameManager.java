@@ -37,6 +37,7 @@ public final class GameManager {
     private final PositionManager positionManager;
     private final ToolManager toolManager;
     private final PartyManager partyManager;
+    private final CoinFlipGui coinFlipGui;
     private final NamespacedKey reachKey;
 
     private BallManager ballManager;
@@ -52,12 +53,13 @@ public final class GameManager {
     private boolean active;
 
     public GameManager(HeroicVolleyBall plugin, ArenaManager arenaManager, PositionManager positionManager,
-                       ToolManager toolManager, PartyManager partyManager) {
+                       ToolManager toolManager, PartyManager partyManager, CoinFlipGui coinFlipGui) {
         this.plugin = plugin;
         this.arenaManager = arenaManager;
         this.positionManager = positionManager;
         this.toolManager = toolManager;
         this.partyManager = partyManager;
+        this.coinFlipGui = coinFlipGui;
         this.reachKey = new NamespacedKey(plugin, "volley_reach");
     }
 
@@ -133,13 +135,44 @@ public final class GameManager {
         if (scoreManager != null) {
             scoreManager.resetMatch();
         }
-        Team serving = null;
-        if (ballManager != null) {
-            serving = ballManager.spawnAtStartTeam();
+
+        if (coinFlipGui != null) {
+            List<Player> viewers = new ArrayList<>();
+            for (UUID uuid : teams.keySet()) {
+                Player player = Bukkit.getPlayer(uuid);
+                if (player != null) {
+                    viewers.add(player);
+                }
+            }
+            coinFlipGui.flip(viewers, this::beginRound);
+        } else {
+            beginRound(Team.RED);
         }
-        teleportToPositions(serving);
+    }
+
+    private void beginRound(Team serving) {
+        serveRound(serving);
         if (musicManager != null) {
             musicManager.startDefault();
+        }
+    }
+
+    public void startNextRound(Team serving) {
+        serveRound(serving);
+    }
+
+    private void serveRound(Team serving) {
+        if (ballManager != null) {
+            if (!ballManager.resetToServe(serving)) {
+                ballManager.resetToServe(serving.opposite());
+            }
+        }
+        teleportToPositions(serving);
+    }
+
+    public void pauseBall() {
+        if (ballManager != null) {
+            Bukkit.getScheduler().runTask(plugin, () -> ballManager.removeBall());
         }
     }
 
@@ -170,6 +203,9 @@ public final class GameManager {
     }
 
     public void end() {
+        if (coinFlipGui != null) {
+            coinFlipGui.cancel();
+        }
         for (UUID uuid : new ArrayList<>(inventories.keySet())) {
             Player player = Bukkit.getPlayer(uuid);
             if (player != null) {
@@ -263,7 +299,7 @@ public final class GameManager {
             }
             Location location = positionManager.getPosition(entry.getValue(), position);
             if (location != null) {
-                player.teleport(location);
+                player.teleport(location.add(0, 1, 0));
             }
         }
 
@@ -275,7 +311,7 @@ public final class GameManager {
                 }
                 Location location = positionManager.getPosition(serving, entry.getValue());
                 if (location != null) {
-                    player.teleport(location);
+                    player.teleport(location.add(0, 1, 0));
                 }
             }
         }

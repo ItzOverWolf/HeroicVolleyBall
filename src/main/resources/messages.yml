@@ -35,9 +35,17 @@ ball:
   spawned: "<green>The volleyball has been spawned at your location."
   bump: "<green><bold>BUMP</bold>  <gray>Ball Up"
   spike: "<red><bold>SPIKE</bold>  <gray>Ball Spike"
+  shield-block: "<blue><bold>BLOCK</bold>  <gray>Ball Forward Down"
+  shield-catch: "<blue><bold>CHANCE</bold>  <gray>Ball Up"
+  shield-bottom: "<gray>Hold the shield underneath the ball to catch it"
+  shield-cooldown: "<gray>Your shield is recharging..."
   penalty: "<red><bold>PENALTY</bold>  <gray>You touched the opponent's ball"
   name-serve: "<gray>Serve"
   name-touches: "<{color}>Touches: {touches}/{max}"
+  pickup: "<green>You picked up the ball. Right-click your own court to place it."
+  place: "<green>Ball placed. Shovel it to start the round."
+  pickup-denied: "<red>The ball can only be picked up before the round starts"
+  place-outside: "<red>The ball must be placed inside your team's area"
 
 score:
   point: "{team} <white>scores!  <white>Score: {red} - {blue}"
@@ -65,6 +73,14 @@ game:
   console-need-position: "<red>Position 6 has not been set for either team yet."
   stopped: "<yellow>Game stopped. The ball and music have been removed and the score reset."
   restarted: "<green>Game restarted! The ball has been placed at Position 6."
+  point-countdown-title: "<yellow><bold>{seconds}</bold>"
+  point-countdown-subtitle: "<gray>{team} <gray>serves next..."
+  round-countdown-title: "<gold><bold>{seconds}</bold>"
+  round-countdown-subtitle: "<gray>Round {round} starts soon..."
+  round-start: "<gold>Round {round} <white>begins! <gray>{team} <gray>serves first."
+  coin-flip-title: "<gold>Coin Flip"
+  coin-flip-result: "<white>{team} <gray>serves first!"
+  coin-flip-broadcast: "<gray>Flipping a coin... <white>{team} <gray>serves first!"
 
 party:
   players-only: "<red>Only players can use party commands."

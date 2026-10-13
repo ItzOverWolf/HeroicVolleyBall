@@ -1,15 +1,20 @@
 package me.heroicstudios.heroicvolleyball.ball;
 
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
+import com.destroystokyo.paper.profile.PlayerProfile;
+import com.destroystokyo.paper.profile.ProfileProperty;
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
 import me.heroicstudios.heroicvolleyball.arena.Arena;
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
 import me.heroicstudios.heroicvolleyball.arena.Team;
+import me.heroicstudios.heroicvolleyball.game.Countdown;
 import me.heroicstudios.heroicvolleyball.game.GameManager;
 import me.heroicstudios.heroicvolleyball.message.Messages;
 import me.heroicstudios.heroicvolleyball.position.PositionManager;
 import me.heroicstudios.heroicvolleyball.score.ScoreManager;
+import me.heroicstudios.heroicvolleyball.tool.ToolManager;
 import me.heroicstudios.heroicvolleyball.tool.VolleyTier;
 import me.heroicstudios.heroicvolleyball.tool.VolleyTool;
 import net.kyori.adventure.text.Component;
@@ -17,13 +22,20 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.block.Block;
+import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.SulfurCube;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 import org.jetbrains.annotations.Nullable;
@@ -41,8 +53,11 @@ public final class BallManager {
     private final ArenaManager arenaManager;
     private final ScoreManager scoreManager;
     private final GameManager gameManager;
+    private final ToolManager toolManager;
+    private final NamespacedKey ballKey;
 
     private @Nullable SulfurCube ball;
+    private @Nullable ItemDisplay ballDisplay;
     private @Nullable Location current;
     private @Nullable BukkitTask task;
     private Vector motion = new Vector();
@@ -59,11 +74,22 @@ public final class BallManager {
     private double spikeTopHorizontal = 0.25;
     private double spikeVerticalThreshold = 1.0;
     private double shieldDeflect = 0.9;
+    private double shieldForward = 0.6;
+    private double shieldCatchPower = 0.8;
+    private double shieldCatchReach = 2.5;
+    private double shieldCatchHeight = 3.0;
+    private int shieldCooldown = 100;
+    private int shieldCooldownTicks;
     private double bounceFactor = 0.3;
     private double settleThreshold = 0.12;
     private int serveResetDelay = 10;
+    private int pointCountdown = 3;
     private boolean touchPenalty = true;
     private boolean showName = true;
+    private boolean pickupEnabled = true;
+    private boolean sulfurCube = true;
+    private Material ballMaterial = Material.GRAY_WOOL;
+    private String ballTexture = "";
     private double shovelWooden = 0.6;
     private double shovelIron = 0.9;
     private double shovelDiamond = 1.2;
@@ -75,15 +101,22 @@ public final class BallManager {
     private State state = State.IDLE;
     private int touches = 3;
     private boolean wasOnGround = true;
+    private boolean awaitingServe;
+    private boolean placed;
+    private @Nullable Team pickupTeam;
+    private @Nullable UUID pickupHolder;
     private @Nullable Team possession;
     private @Nullable Team lastHitter;
     private int lastHitTick = -100;
 
-    public BallManager(HeroicVolleyBall plugin, ArenaManager arenaManager, ScoreManager scoreManager, GameManager gameManager) {
+    public BallManager(HeroicVolleyBall plugin, ArenaManager arenaManager, ScoreManager scoreManager,
+            GameManager gameManager, ToolManager toolManager) {
         this.plugin = plugin;
         this.arenaManager = arenaManager;
         this.scoreManager = scoreManager;
         this.gameManager = gameManager;
+        this.toolManager = toolManager;
+        this.ballKey = new NamespacedKey(plugin, "ball");
         loadConfig();
     }
 
@@ -100,11 +133,21 @@ public final class BallManager {
         this.spikeUp = config.getDouble("ball.spike.up", 0.7);
         this.spikeTopHorizontal = config.getDouble("ball.spike.top-horizontal", 0.25);
         this.spikeVerticalThreshold = config.getDouble("ball.spike.vertical-threshold", 1.0);
-        this.shieldDeflect = config.getDouble("ball.shield-deflect", 0.9);
+        this.shieldDeflect = config.getDouble("ball.shield.deflect", config.getDouble("ball.shield-deflect", 0.9));
+        this.shieldForward = config.getDouble("ball.shield.forward", 0.6);
+        this.shieldCatchPower = config.getDouble("ball.shield.catch-power", 0.8);
+        this.shieldCatchReach = config.getDouble("ball.shield.catch-reach", 2.5);
+        this.shieldCatchHeight = config.getDouble("ball.shield.catch-height", 3.0);
+        this.shieldCooldown = Math.max(0, config.getInt("ball.shield.cooldown", 100));
         this.bounceFactor = config.getDouble("ball.bounce", 0.3);
         this.serveResetDelay = Math.max(0, config.getInt("ball.serve-reset-delay", 10));
+        this.pointCountdown = Math.max(0, config.getInt("game.point-countdown", 3));
         this.touchPenalty = config.getBoolean("game.opponent-touch-penalty", true);
         this.showName = config.getBoolean("ball.show-name", true);
+        this.pickupEnabled = config.getBoolean("ball.pickup-enabled", true);
+        this.sulfurCube = config.getBoolean("ball.sulfur-cube", true);
+        this.ballMaterial = parseBallMaterial(config.getString("ball.material", "GRAY_WOOL"));
+        this.ballTexture = config.getString("ball.texture", "");
         this.shovelWooden = config.getDouble("ball.power.shovel.wooden", 0.6);
         this.shovelIron = config.getDouble("ball.power.shovel.iron", 0.9);
         this.shovelDiamond = config.getDouble("ball.power.shovel.diamond", 1.2);
@@ -114,6 +157,7 @@ public final class BallManager {
         this.spikeDiamond = config.getDouble("ball.power.spike.diamond", 1.8);
 
         this.touches = Math.min(maxTouches, touches);
+        applyBallAppearance();
         updateName();
     }
 
@@ -139,6 +183,79 @@ public final class BallManager {
 
     public boolean isBall(@Nullable Entity entity) {
         return ball != null && entity != null && entity.getUniqueId().equals(ball.getUniqueId());
+    }
+
+    public boolean canPickupBall() {
+        return pickupEnabled && !awaitingServe && !placed
+                && state == State.IDLE && ball != null && ball.isValid();
+    }
+
+    public boolean isBallItem(ItemStack item) {
+        if (item == null || !item.hasItemMeta() || item.getItemMeta() == null) {
+            return false;
+        }
+        return item.getItemMeta().getPersistentDataContainer().has(ballKey, PersistentDataType.BOOLEAN);
+    }
+
+    public void sendPickupDenied(Player player) {
+        plugin.getMessages().actionBar(player, "ball.pickup-denied");
+    }
+
+    public boolean pickupBall(Player player) {
+        if (!canPickupBall()) {
+            return false;
+        }
+        if (possession != null) {
+            pickupTeam = possession;
+        }
+        pickupHolder = player.getUniqueId();
+        Location where = current != null ? current : ball.getLocation();
+        where.getWorld().playSound(where, Sound.ENTITY_ITEM_PICKUP, 1.0f, 1.0f);
+
+        ItemStack item = ballItem(tintedBallMaterial());
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.getPersistentDataContainer().set(ballKey, PersistentDataType.BOOLEAN, true);
+            item.setItemMeta(meta);
+        }
+
+        removeBall();
+
+        java.util.Map<Integer, ItemStack> leftover = player.getInventory().addItem(item);
+        if (!leftover.isEmpty()) {
+            player.getWorld().dropItemNaturally(player.getLocation(), leftover.get(0));
+        }
+        plugin.getMessages().actionBar(player, "ball.pickup");
+        return true;
+    }
+
+    public boolean placeBall(Player player, Block clicked) {
+        ItemStack item = player.getInventory().getItemInMainHand();
+        if (!isBallItem(item)) {
+            return false;
+        }
+        if (pickupTeam == null) {
+            return false;
+        }
+        Arena arena = arenaManager.getArena(pickupTeam);
+        if (arena == null || !arena.contains(clicked.getLocation())) {
+            plugin.getMessages().actionBar(player, "ball.place-outside");
+            return false;
+        }
+
+        item.setAmount(item.getAmount() - 1);
+        if (item.getAmount() > 0) {
+            player.getInventory().setItemInMainHand(item);
+        } else {
+            player.getInventory().setItemInMainHand(null);
+        }
+
+        spawnBall(clicked.getLocation().add(0.5, 1.0, 0.5));
+        placed = true;
+        pickupTeam = null;
+        pickupHolder = null;
+        plugin.getMessages().actionBar(player, "ball.place");
+        return true;
     }
 
     public void spawnAtPlayer(Player player) {
@@ -211,6 +328,7 @@ public final class BallManager {
 
     public void spawnBall(Location location) {
         removeBall();
+        takeBackHeldBall();
 
         World world = location.getWorld();
         if (world == null) {
@@ -228,7 +346,8 @@ public final class BallManager {
             cube.setMaximumNoDamageTicks(0);
             cube.setNoDamageTicks(0);
             cube.setCustomNameVisible(true);
-            cube.setEquipped(new ItemStack(Material.GRAY_WOOL));
+            cube.setInvisible(!sulfurCube);
+            cube.setEquipped(ballItem(ballMaterial));
         });
 
         this.current = location.clone();
@@ -236,12 +355,34 @@ public final class BallManager {
         this.state = State.IDLE;
         this.touches = maxTouches;
         this.wasOnGround = true;
+        this.awaitingServe = false;
+        this.placed = false;
+        this.pickupTeam = null;
+        this.pickupHolder = null;
         this.lastHitTick = -100;
         this.possession = arenaManager.getArenaAt(location);
         this.lastHitter = null;
-        applyBallColor();
+        this.shieldCooldownTicks = 0;
+        applyBallAppearance();
         updateName();
         startTask();
+    }
+
+    private void takeBackHeldBall() {
+        if (pickupHolder == null) {
+            return;
+        }
+        Player holder = Bukkit.getPlayer(pickupHolder);
+        if (holder != null) {
+            ItemStack[] contents = holder.getInventory().getContents();
+            for (int i = 0; i < contents.length; i++) {
+                if (isBallItem(contents[i])) {
+                    contents[i] = null;
+                }
+            }
+            holder.getInventory().setContents(contents);
+        }
+        pickupHolder = null;
     }
 
     public void onPlayerHit(Player player, VolleyTool tool, VolleyTier tier) {
@@ -252,6 +393,9 @@ public final class BallManager {
         if (now - lastHitTick < 4) {
             return;
         }
+        if (awaitingServe) {
+            return;
+        }
 
         Team playerTeam = resolveTeam(player);
 
@@ -259,13 +403,21 @@ public final class BallManager {
         boolean penaltyActive = touchPenalty && gameManager != null && gameManager.isActive();
         if (penaltyActive && ballSide != null && playerTeam != null && ballSide != playerTeam) {
             lastHitTick = now;
-            scoreManager.addPoint(ballSide);
-            resetRally();
-            scheduleServeReset(ballSide);
-            if (current != null) {
-                current.getWorld().playSound(current, Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+            if (scorePoint(ballSide)) {
+                if (current != null) {
+                    current.getWorld().playSound(current, Sound.ENTITY_VILLAGER_NO, 1.0f, 1.0f);
+                }
+                plugin.getMessages().actionBar(player, "ball.penalty");
             }
-            plugin.getMessages().actionBar(player, "ball.penalty");
+            return;
+        }
+
+        if (tool == VolleyTool.SHIELD && shieldCooldownTicks > 0) {
+            plugin.getMessages().actionBar(player, "ball.shield-cooldown");
+            return;
+        }
+        if (tool == VolleyTool.SHIELD && isBelowBall(player)) {
+            plugin.getMessages().actionBar(player, "ball.shield-bottom");
             return;
         }
 
@@ -279,7 +431,7 @@ public final class BallManager {
         } else if (tool == VolleyTool.SWORD) {
             spike(player, tier);
         } else if (tool == VolleyTool.SHIELD) {
-            block();
+            block(player);
         }
     }
 
@@ -377,6 +529,10 @@ public final class BallManager {
             return;
         }
 
+        if (shieldCooldownTicks > 0) {
+            shieldCooldownTicks--;
+        }
+        tryShieldCatch();
         integrate();
         updatePossession();
         step();
@@ -426,16 +582,18 @@ public final class BallManager {
             motion.setZ(motion.getZ() * 0.5);
 
             if (state == State.RALLY && !wasOnGround) {
-                Team scorer = awardPoint();
-                resetRally();
-                if (scorer != null) {
-                    scheduleServeReset(scorer);
+                Team scorer = resolveScorer();
+                if (!scorePoint(scorer)) {
+                    resetRally();
                 }
             }
         }
 
         wasOnGround = onGround;
         ball.teleport(current);
+        if (ballDisplay != null && ballDisplay.isValid()) {
+            ballDisplay.teleport(current);
+        }
     }
 
     private void moveHorizontal(World world, double amount, int axis) {
@@ -515,12 +673,70 @@ public final class BallManager {
         return false;
     }
 
-    private void block() {
-        motion.setX(motion.getX() * 0.2);
-        motion.setZ(motion.getZ() * 0.2);
+    private void block(Player player) {
+        Vector forward = horizontalDirection(player);
+        motion.setX(forward.getX() * shieldForward * velocityScale);
+        motion.setZ(forward.getZ() * shieldForward * velocityScale);
         motion.setY(-shieldDeflect * velocityScale);
         wasOnGround = false;
+        shieldCooldownTicks = shieldCooldown;
         updateName();
+
+        if (current != null) {
+            current.getWorld().playSound(current, Sound.BLOCK_WOOL_BREAK, 1.0f, 0.9f);
+        }
+        plugin.getMessages().actionBar(player, "ball.shield-block");
+    }
+
+    private boolean isBelowBall(Player player) {
+        Location ballLocation = current != null ? current : ball.getLocation();
+        return player.getEyeLocation().getY() - ballLocation.getY() < -spikeVerticalThreshold;
+    }
+
+    private void tryShieldCatch() {
+        if (ball == null || !ball.isValid() || current == null || awaitingServe || shieldCooldownTicks > 0) {
+            return;
+        }
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (!player.isBlocking()) {
+                continue;
+            }
+            ItemStack main = player.getInventory().getItemInMainHand();
+            if (toolManager.getTool(main) != VolleyTool.SHIELD) {
+                continue;
+            }
+            if (shieldCatchable(player)) {
+                catchBall(player);
+                return;
+            }
+        }
+    }
+
+    private boolean shieldCatchable(Player player) {
+        Location eye = player.getEyeLocation();
+        double dy = current.getY() - eye.getY();
+        if (dy < 0.3 || dy > shieldCatchHeight) {
+            return false;
+        }
+        double reach = Math.hypot(current.getX() - eye.getX(), current.getZ() - eye.getZ());
+        return reach <= shieldCatchReach;
+    }
+
+    private void catchBall(Player player) {
+        motion.setX(motion.getX() * 0.3);
+        motion.setZ(motion.getZ() * 0.3);
+        motion.setY(shieldCatchPower * velocityScale);
+        wasOnGround = false;
+        if (state == State.IDLE) {
+            state = State.RALLY;
+        }
+        shieldCooldownTicks = shieldCooldown;
+        updateName();
+
+        if (current != null) {
+            current.getWorld().playSound(current, Sound.BLOCK_WOOL_BREAK, 1.0f, 1.3f);
+        }
+        plugin.getMessages().actionBar(player, "ball.shield-catch");
     }
 
     private void updatePossession() {
@@ -530,53 +746,144 @@ public final class BallManager {
         }
         possession = currentTeam;
         touches = maxTouches;
-        applyBallColor();
+        applyBallAppearance();
     }
 
-    private void applyBallColor() {
+    private void applyBallAppearance() {
         if (ball == null || !ball.isValid()) {
             return;
         }
-        Material material = switch (possession) {
-            case RED -> Material.RED_WOOL;
-            case BLUE -> Material.BLUE_WOOL;
-            case null -> Material.GRAY_WOOL;
-        };
-        ball.setEquipped(new ItemStack(material));
+
+        ItemStack item = ballItem(tintedBallMaterial());
+
+        if (sulfurCube) {
+            ball.setInvisible(false);
+            ball.setEquipped(item);
+            removeDisplay();
+            return;
+        }
+
+        ball.setInvisible(true);
+        ball.setEquipped(new ItemStack(Material.AIR));
+        showDisplay(item);
+    }
+
+    private Material tintedBallMaterial() {
+        Material material = ballMaterial;
+        if (material.name().endsWith("_WOOL")) {
+            material = switch (possession) {
+                case RED -> Material.RED_WOOL;
+                case BLUE -> Material.BLUE_WOOL;
+                case null -> Material.GRAY_WOOL;
+            };
+        }
+        return material;
+    }
+
+    private void showDisplay(ItemStack item) {
+        if (ball == null || !ball.isValid()) {
+            return;
+        }
+        if (ballDisplay != null && ballDisplay.isValid()) {
+            ballDisplay.setItemStack(item);
+            return;
+        }
+        ballDisplay = ball.getWorld().spawn(ball.getLocation(), ItemDisplay.class,
+                CreatureSpawnEvent.SpawnReason.CUSTOM, display -> {
+                    display.setItemStack(item);
+                    display.setPersistent(true);
+                    display.setInvulnerable(true);
+                    display.setGravity(false);
+                    display.setSilent(true);
+                    display.setBillboard(Display.Billboard.FIXED);
+                    display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
+                    display.setCustomNameVisible(false);
+                    display.setTeleportDuration(0);
+                });
+    }
+
+    private void removeDisplay() {
+        if (ballDisplay != null) {
+            ballDisplay.remove();
+            ballDisplay = null;
+        }
+    }
+
+    private ItemStack ballItem(Material material) {
+        ItemStack item = new ItemStack(material);
+        if (material != Material.PLAYER_HEAD || ballTexture.isEmpty()) {
+            return item;
+        }
+        SkullMeta meta = (SkullMeta) item.getItemMeta();
+        if (meta == null) {
+            return item;
+        }
+        PlayerProfile profile = Bukkit.createProfile(UUID.nameUUIDFromBytes(ballTexture.getBytes()), "Ball");
+        profile.setProperty(new ProfileProperty("textures", ballTexture));
+        meta.setPlayerProfile(profile);
+        item.setItemMeta(meta);
+        return item;
+    }
+
+    private Material parseBallMaterial(String name) {
+        if (name == null) {
+            return Material.GRAY_WOOL;
+        }
+        Material material = Material.matchMaterial(name);
+        return material != null && material.isItem() ? material : Material.GRAY_WOOL;
     }
 
     private void resetRally() {
         state = State.IDLE;
         touches = maxTouches;
+        placed = false;
     }
 
-    private @Nullable Team awardPoint() {
-        if (scoreManager == null || lastHitter == null) {
+    private @Nullable Team resolveScorer() {
+        if (lastHitter == null) {
             return null;
         }
 
         Team landingTeam = arenaManager.getArenaAt(current);
         boolean landedOnOpponent = landingTeam != null && landingTeam != lastHitter;
-        Team scorer = landedOnOpponent ? lastHitter : lastHitter.opposite();
+        return landedOnOpponent ? lastHitter : lastHitter.opposite();
+    }
+
+    private boolean scorePoint(@Nullable Team scorer) {
+        if (scorer == null || awaitingServe || scoreManager == null) {
+            return false;
+        }
+        awaitingServe = true;
         scoreManager.addPoint(scorer);
-        return scorer;
+        resetRally();
+        if (!scoreManager.isMatchOver() && !scoreManager.isRoundTransition()) {
+            scheduleServeReset(scorer);
+        }
+        return true;
     }
 
     private void scheduleServeReset(Team team) {
         if (serveResetDelay <= 0) {
-            Bukkit.getScheduler().runTask(plugin, () -> performServeReset(team));
+            beginServeCountdown(team);
         } else {
-            Bukkit.getScheduler().runTaskLater(plugin, () -> performServeReset(team), serveResetDelay);
+            Bukkit.getScheduler().runTaskLater(plugin, () -> beginServeCountdown(team), serveResetDelay);
         }
+    }
+
+    private void beginServeCountdown(Team team) {
+        if (pointCountdown <= 0) {
+            performServeReset(team);
+            return;
+        }
+        Countdown.run(plugin, pointCountdown, "game.point-countdown-title", "game.point-countdown-subtitle",
+                () -> performServeReset(team), "team", Messages.teamDisplay(team));
     }
 
     private void performServeReset(Team team) {
         if (state == State.RALLY) {
             return;
         }
-        if (ball != null && ball.isValid()) {
-            resetToServe(team);
-        }
+        resetToServe(team);
         if (gameManager != null) {
             gameManager.teleportToPositions(team);
         }
@@ -647,6 +954,7 @@ public final class BallManager {
     }
 
     public void removeBall() {
+        removeDisplay();
         if (ball != null) {
             ball.remove();
             ball = null;
@@ -656,6 +964,7 @@ public final class BallManager {
     }
 
     private void cleanup() {
+        removeDisplay();
         ball = null;
         current = null;
         motion = new Vector();
@@ -670,6 +979,7 @@ public final class BallManager {
             task.cancel();
             task = null;
         }
+        removeDisplay();
         if (ball != null) {
             ball.remove();
             ball = null;

@@ -4,24 +4,46 @@ import java.util.EnumMap;
 import java.util.Map;
 
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
+import me.heroicstudios.heroicvolleyball.util.YamlFile;
 import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.jetbrains.annotations.Nullable;
 
 public final class ArenaManager {
 
     private final HeroicVolleyBall plugin;
+    private final YamlFile arenasFile;
     private final Map<Team, Arena> arenas = new EnumMap<>(Team.class);
 
     public ArenaManager(HeroicVolleyBall plugin) {
         this.plugin = plugin;
+        this.arenasFile = new YamlFile(plugin, "arenas.yml");
+        migrateFromConfig();
         load();
     }
 
+    private void migrateFromConfig() {
+        FileConfiguration config = plugin.getConfig();
+        if (!config.isConfigurationSection("arenas")) {
+            return;
+        }
+        ConfigurationSection section = config.getConfigurationSection("arenas");
+        for (String key : section.getKeys(false)) {
+            if (!arenasFile.config().contains("arenas." + key)) {
+                arenasFile.config().set("arenas." + key, section.get(key));
+            }
+        }
+        arenasFile.save();
+        config.set("arenas", null);
+        plugin.saveConfig();
+    }
+
     public void load() {
+        arenasFile.reload();
         arenas.clear();
 
-        ConfigurationSection root = plugin.getConfig().getConfigurationSection("arenas");
+        ConfigurationSection root = arenasFile.config().getConfigurationSection("arenas");
         if (root == null) {
             return;
         }
@@ -51,22 +73,22 @@ public final class ArenaManager {
     }
 
     public void save() {
-        plugin.getConfig().set("arenas", null);
+        arenasFile.config().set("arenas", null);
 
         for (Map.Entry<Team, Arena> entry : arenas.entrySet()) {
             Arena arena = entry.getValue();
             String path = "arenas." + arena.getTeam().name().toLowerCase();
 
-            plugin.getConfig().set(path + ".world", arena.getWorld());
-            plugin.getConfig().set(path + ".min.x", arena.getMinX());
-            plugin.getConfig().set(path + ".min.y", arena.getMinY());
-            plugin.getConfig().set(path + ".min.z", arena.getMinZ());
-            plugin.getConfig().set(path + ".max.x", arena.getMaxX());
-            plugin.getConfig().set(path + ".max.y", arena.getMaxY());
-            plugin.getConfig().set(path + ".max.z", arena.getMaxZ());
+            arenasFile.config().set(path + ".world", arena.getWorld());
+            arenasFile.config().set(path + ".min.x", arena.getMinX());
+            arenasFile.config().set(path + ".min.y", arena.getMinY());
+            arenasFile.config().set(path + ".min.z", arena.getMinZ());
+            arenasFile.config().set(path + ".max.x", arena.getMaxX());
+            arenasFile.config().set(path + ".max.y", arena.getMaxY());
+            arenasFile.config().set(path + ".max.z", arena.getMaxZ());
         }
 
-        plugin.saveConfig();
+        arenasFile.save();
     }
 
     public void setArena(Team team, Arena arena) {

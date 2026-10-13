@@ -336,7 +336,7 @@ public final class SetupGui implements Listener {
                 Player p = Bukkit.getPlayer(uuid);
                 if (p != null) {
                     String teamTag = Messages.teamDisplay(team);
-                    p.showTitle(net.kyori.adventure.title.Title.title(
+                    p.showTitle(Messages.noFade(
                             plugin.getMessages().get("game.assigned-title", "team", teamTag),
                             plugin.getMessages().get("game.assigned-subtitle", "team", teamTag)));
                 }
