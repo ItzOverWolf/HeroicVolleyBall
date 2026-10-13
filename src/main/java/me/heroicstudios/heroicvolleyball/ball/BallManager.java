@@ -1,5 +1,7 @@
 package me.heroicstudios.heroicvolleyball.ball;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -33,6 +35,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.SulfurCube;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -80,6 +83,7 @@ public final class BallManager {
     private double shieldCatchHeight = 3.0;
     private int shieldCooldown = 100;
     private int shieldCooldownTicks;
+    private final Map<UUID, ItemStack> brokenShields = new HashMap<>();
     private double bounceFactor = 0.3;
     private double settleThreshold = 0.12;
     private int serveResetDelay = 10;
@@ -362,7 +366,7 @@ public final class BallManager {
         this.lastHitTick = -100;
         this.possession = arenaManager.getArenaAt(location);
         this.lastHitter = null;
-        this.shieldCooldownTicks = 0;
+        resetShieldCooldown();
         applyBallAppearance();
         updateName();
         startTask();
@@ -531,6 +535,10 @@ public final class BallManager {
 
         if (shieldCooldownTicks > 0) {
             shieldCooldownTicks--;
+            updateBrokenShields();
+            if (shieldCooldownTicks <= 0) {
+                restoreBrokenShields();
+            }
         }
         tryShieldCatch();
         integrate();
@@ -679,7 +687,7 @@ public final class BallManager {
         motion.setZ(forward.getZ() * shieldForward * velocityScale);
         motion.setY(-shieldDeflect * velocityScale);
         wasOnGround = false;
-        shieldCooldownTicks = shieldCooldown;
+        startShieldCooldown(player);
         updateName();
 
         if (current != null) {
@@ -730,13 +738,79 @@ public final class BallManager {
         if (state == State.IDLE) {
             state = State.RALLY;
         }
-        shieldCooldownTicks = shieldCooldown;
+        startShieldCooldown(player);
         updateName();
 
         if (current != null) {
             current.getWorld().playSound(current, Sound.BLOCK_WOOL_BREAK, 1.0f, 1.3f);
         }
         plugin.getMessages().actionBar(player, "ball.shield-catch");
+    }
+
+    private void startShieldCooldown(Player player) {
+        if (shieldCooldown <= 0) {
+            shieldCooldownTicks = 0;
+            return;
+        }
+        shieldCooldownTicks = shieldCooldown;
+        if (player != null) {
+            player.getWorld().playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK, 1.0f, 1.0f);
+            breakShield(player);
+        }
+    }
+
+    private void updateBrokenShields() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            if (brokenShields.containsKey(player.getUniqueId())) {
+                continue;
+            }
+            breakShield(player);
+        }
+    }
+
+    private void breakShield(Player player) {
+        if (brokenShields.containsKey(player.getUniqueId())) {
+            return;
+        }
+        ItemStack item = player.getInventory().getItemInMainHand();
+        if (toolManager.getTool(item) != VolleyTool.SHIELD) {
+            return;
+        }
+        brokenShields.put(player.getUniqueId(), item.clone());
+        player.getInventory().setItemInMainHand(crackedShield(item));
+    }
+
+    private ItemStack crackedShield(ItemStack item) {
+        ItemStack cracked = item.clone();
+        ItemMeta meta = cracked.getItemMeta();
+        if (meta instanceof Damageable damageable) {
+            damageable.setUnbreakable(false);
+            damageable.setDamage(Math.max(0, cracked.getType().getMaxDurability() - 2));
+        }
+        cracked.setItemMeta(meta);
+        return cracked;
+    }
+
+    private void restoreBrokenShields() {
+        for (Map.Entry<UUID, ItemStack> entry : brokenShields.entrySet()) {
+            Player player = Bukkit.getPlayer(entry.getKey());
+            if (player == null) {
+                continue;
+            }
+            ItemStack original = entry.getValue();
+            ItemStack[] contents = player.getInventory().getContents();
+            for (int i = 0; i < contents.length; i++) {
+                if (contents[i] != null && toolManager.getTool(contents[i]) == VolleyTool.SHIELD) {
+                    player.getInventory().setItem(i, original.clone());
+                }
+            }
+        }
+        brokenShields.clear();
+    }
+
+    private void resetShieldCooldown() {
+        shieldCooldownTicks = 0;
+        restoreBrokenShields();
     }
 
     private void updatePossession() {
@@ -955,6 +1029,7 @@ public final class BallManager {
 
     public void removeBall() {
         removeDisplay();
+        resetShieldCooldown();
         if (ball != null) {
             ball.remove();
             ball = null;
@@ -965,6 +1040,7 @@ public final class BallManager {
 
     private void cleanup() {
         removeDisplay();
+        resetShieldCooldown();
         ball = null;
         current = null;
         motion = new Vector();
@@ -980,6 +1056,7 @@ public final class BallManager {
             task = null;
         }
         removeDisplay();
+        resetShieldCooldown();
         if (ball != null) {
             ball.remove();
             ball = null;
