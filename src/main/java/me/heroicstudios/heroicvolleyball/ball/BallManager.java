@@ -92,6 +92,7 @@ public final class BallManager {
     private boolean showName = true;
     private boolean pickupEnabled = true;
     private boolean sulfurCube = true;
+    private boolean cubeInvisible = false;
     private Material ballMaterial = Material.GRAY_WOOL;
     private String ballTexture = "";
     private double shovelWooden = 0.6;
@@ -150,6 +151,7 @@ public final class BallManager {
         this.showName = config.getBoolean("ball.show-name", true);
         this.pickupEnabled = config.getBoolean("ball.pickup-enabled", true);
         this.sulfurCube = config.getBoolean("ball.sulfur-cube", true);
+        this.cubeInvisible = config.getBoolean("ball.cube-invisible", false);
         this.ballMaterial = parseBallMaterial(config.getString("ball.material", "GRAY_WOOL"));
         this.ballTexture = config.getString("ball.texture", "");
         this.shovelWooden = config.getDouble("ball.power.shovel.wooden", 0.6);
@@ -350,7 +352,7 @@ public final class BallManager {
             cube.setMaximumNoDamageTicks(0);
             cube.setNoDamageTicks(0);
             cube.setCustomNameVisible(true);
-            cube.setInvisible(!sulfurCube);
+            cube.setInvisible(cubeInvisible || !sulfurCube);
             cube.setEquipped(ballItem(ballMaterial));
         });
 
@@ -831,7 +833,7 @@ public final class BallManager {
         ItemStack item = ballItem(tintedBallMaterial());
 
         if (sulfurCube) {
-            ball.setInvisible(false);
+            ball.setInvisible(cubeInvisible);
             ball.setEquipped(item);
             removeDisplay();
             return;

@@ -106,6 +106,8 @@ editing or regenerating a config:
 - `ball.sulfur-cube` – `true` keeps the vanilla sulfur cube with the item inside
   it; `false` hides the cube and shows only the configured item floating as the
   ball. Changeable live with `/volleyreload`.
+- `ball.cube-invisible` – hides just the cube model (item, physics and touches
+  untouched) for experimenting.
 - `ball.material` – the ball's appearance (and the item you pick up). Any
   block/item material name works (`GRAY_WOOL`, `SLIME_BALL`, `DIAMOND`,
   `PLAYER_HEAD`, ...). Wools tint red/blue by which court the ball is over.

@@ -12,7 +12,7 @@
 # Ball physics and rule settings. Reload live with /volleyreload.
 ball:
   # Size of the sulfur cube ball (1 = small, 2 = default, ...).
-  size: 2
+  size: 5
   # Maximum number of touches a team gets per possession.
   max-touches: 3
   # Downward acceleration applied to the ball every tick (blocks/tick^2).
@@ -71,6 +71,10 @@ ball:
   # not been hit), and only once per serve - after placing it cannot be picked
   # up again until the next point resets the ball.
   pickup-enabled: true
+  # Hide just the sulfur cube's model while keeping the equipped item on it and
+  # all physics/touches intact. Handy to experiment with - the cube is still
+  # there, you just can't see it.
+  cube-invisible: true
   # If true, the ball is a vanilla sulfur cube. The "equipped" item below sits
   # inside it. If false, the cube is hidden and only the item is shown floating
   # as the ball (more of a custom/modded look). You can change this live with
@@ -80,21 +84,21 @@ ball:
   # material name works (for example GRAY_WOOL, SLIME_BALL, DIAMOND, GLOWSTONE,
   # PLAYER_HEAD). If the material is a wool (_WOOL), the ball is coloured by
   # possession: red over a red court, blue over a blue court, gray elsewhere.
-  material: GRAY_WOOL
+  material: PLAYER_HEAD
   # Custom player head skin, shown when material is PLAYER_HEAD. This is the
   # base64 "textures" value from your skin (the part after the JSON value).
   # Leave empty to use a normal Steve/head texture for this material.
-  texture: ""
+  texture: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDdkYWIwOGMyMTQ0NGVmMGRkZWU2OWJjMjYxYzFkNmQ5ZWZhMmU2MTE1Y2U1NzRkZTBlNTAyODAyZGMwMjJhNyJ9fX0="
   # Per-tier tool power.
   power:
     shovel:
+      wooden: 0.5 #
+      iron: 1.0
+      diamond: 1.5
+    spike:
       wooden: 0.6
       iron: 0.9
-      diamond: 1.2
-    spike:
-      wooden: 1.0
-      iron: 1.4
-      diamond: 1.8
+      diamond: 1.4
 
 # Match rules.
 game:
@@ -110,7 +114,7 @@ game:
   # game starts and removed when it ends. Set a level to 0 to disable it.
   effects:
     enabled: true
-    jump-boost-level: 4
+    jump-boost-level: 5
     speed-level: 4
   # Show big on-screen titles when a point, set or match is won.
   titles: true
