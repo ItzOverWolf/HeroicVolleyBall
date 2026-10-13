@@ -1,11 +1,14 @@
 package me.heroicstudios.heroicvolleyball;
 
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
+import me.heroicstudios.heroicvolleyball.backrow.BackrowManager;
 import me.heroicstudios.heroicvolleyball.ball.BallListener;
 import me.heroicstudios.heroicvolleyball.ball.BallManager;
 import me.heroicstudios.heroicvolleyball.command.PartyCommand;
 import me.heroicstudios.heroicvolleyball.command.RestartGameCommand;
 import me.heroicstudios.heroicvolleyball.command.SetArenaCommand;
+import me.heroicstudios.heroicvolleyball.command.SetBackrowCommand;
+import me.heroicstudios.heroicvolleyball.command.SetBallSpawnCommand;
 import me.heroicstudios.heroicvolleyball.command.SpawnBallCommand;
 import me.heroicstudios.heroicvolleyball.command.StartGameCommand;
 import me.heroicstudios.heroicvolleyball.command.StopGameCommand;
@@ -24,6 +27,7 @@ import me.heroicstudios.heroicvolleyball.music.MusicManager;
 import me.heroicstudios.heroicvolleyball.party.PartyManager;
 import me.heroicstudios.heroicvolleyball.position.PositionManager;
 import me.heroicstudios.heroicvolleyball.score.ScoreManager;
+import me.heroicstudios.heroicvolleyball.spawn.BallSpawnManager;
 import me.heroicstudios.heroicvolleyball.tool.ToolListener;
 import me.heroicstudios.heroicvolleyball.tool.ToolManager;
 import me.heroicstudios.heroicvolleyball.util.ConfigDefaults;
@@ -47,6 +51,8 @@ public final class HeroicVolleyBall extends JavaPlugin {
     private BallManager ballManager;
     private ScoreManager scoreManager;
     private MusicManager musicManager;
+    private BackrowManager backrowManager;
+    private BallSpawnManager ballSpawnManager;
     private Messages messages;
 
     @Override
@@ -56,6 +62,8 @@ public final class HeroicVolleyBall extends JavaPlugin {
 
         this.messages = new Messages(this);
         this.arenaManager = new ArenaManager(this);
+        this.backrowManager = new BackrowManager(this);
+        this.ballSpawnManager = new BallSpawnManager(this);
         this.positionManager = new PositionManager(this);
         this.wandManager = new WandManager(this);
         this.guiListener = new GuiListener(positionManager, messages);
@@ -96,8 +104,22 @@ public final class HeroicVolleyBall extends JavaPlugin {
             setArena.setTabCompleter(setArenaCommand);
         }
 
+        SetBackrowCommand setBackrowCommand = new SetBackrowCommand(backrowManager, wandManager, messages);
+        PluginCommand setBackrow = getCommand("setbackrow");
+        if (setBackrow != null) {
+            setBackrow.setExecutor(setBackrowCommand);
+            setBackrow.setTabCompleter(setBackrowCommand);
+        }
+
+        SetBallSpawnCommand setBallSpawnCommand = new SetBallSpawnCommand(ballSpawnManager, messages);
+        PluginCommand setBallSpawn = getCommand("setballspawnpoint");
+        if (setBallSpawn != null) {
+            setBallSpawn.setExecutor(setBallSpawnCommand);
+        }
+
         register("spawnball", new SpawnBallCommand(ballManager, messages));
-        register("startgame", new StartGameCommand(partyManager, setupGui, ballManager, scoreManager, musicManager, messages));
+        register("startgame", new StartGameCommand(partyManager, setupGui, ballManager, scoreManager, musicManager,
+                arenaManager, positionManager, ballSpawnManager, messages));
         register("stopgame", new StopGameCommand(ballManager, scoreManager, musicManager, gameManager, messages));
         register("restartgame", new RestartGameCommand(ballManager, scoreManager, musicManager, gameManager, messages));
         register("volleyreload", new VolleyReloadCommand(this));
@@ -159,6 +181,14 @@ public final class HeroicVolleyBall extends JavaPlugin {
 
     public ArenaManager getArenaManager() {
         return arenaManager;
+    }
+
+    public BackrowManager getBackrowManager() {
+        return backrowManager;
+    }
+
+    public BallSpawnManager getBallSpawnManager() {
+        return ballSpawnManager;
     }
 
     public WandManager getWandManager() {

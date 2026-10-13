@@ -22,7 +22,9 @@ per team, and rally a sulfur-cube ball using shovels, swords and shields.
 | --- | --- | --- |
 | `/volleywand` | Gives the selection wand (left-click point 1, right-click point 2, sneak + right-click to open the position menu). | `heroicvolleyball.volleywand` |
 | `/setarena <red\|blue> [direction]` | Sets the selected region as a team's arena and the direction that team faces. | `heroicvolleyball.setarena` |
-| `/spawnball` | Spawns the volleyball at your location. | `heroicvolleyball.spawnball` |
+| `/setbackrow <red\|blue>` | Sets the selected region as a team's back row. The ball can only be picked up and placed there. | `heroicvolleyball.setbackrow` |
+| `/setballspawnpoint [clear]` | Saves your current location as the ball's spawn point (where it starts each serve). | `heroicvolleyball.setballspawnpoint` |
+| `/spawnball` | Spawns the volleyball, preferring the saved spawn point. | `heroicvolleyball.spawnball` |
 | `/startgame` | Players: opens the team/position picker. Console: serves the ball at Position 6. | `heroicvolleyball.startgame` |
 | `/stopgame` | Stops the game, removes the ball/music and resets the score. | `heroicvolleyball.stopgame` |
 | `/restartgame` | Resets the score and respawns the ball at Position 6. | `heroicvolleyball.restartgame` |
@@ -42,8 +44,17 @@ per team, and rally a sulfur-cube ball using shovels, swords and shields.
    to face wherever you are looking). Repeat for `blue`.
 4. Sneak + right-click a block with the wand to open the menu, then pick the team and
    click the spot for each position `1`–`6`. Position `6` is the serve spot.
-5. Run `/startgame`. Party members pick a team and position; the ball serves from
+5. Optional: select the back row of each team with the wand and save it with
+   `/setbackrow <red|blue>`. When a team has a back row set, its ball can only be
+   picked up and placed inside it (otherwise the whole arena is allowed).
+6. Optional: stand where the ball should start each serve and run
+   `/setballspawnpoint`. `/spawnball` and serve placements prefer it.
+7. Run `/startgame`. Party members pick a team and position; the ball serves from
    Position 6 and players are teleported into place.
+
+`/startgame` refuses to start until the setup is complete and lists whatever is
+missing: team arenas (`/setarena`), all six positions per team (wand menu) and the
+ball spawn point (`/setballspawnpoint`).
 
 ### Tools
 
@@ -94,6 +105,8 @@ editing or regenerating a config:
   (existing values are never overwritten), so you never need to delete it.
 - `arenas.yml` – the two court regions set with `/setarena`.
 - `positions.yml` – positions `1`–`6` per team plus the facing direction.
+- `backrow.yml` – the optional back-row regions set with `/setbackrow`.
+- `ballspawn.yml` – the ball spawn point set with `/setballspawnpoint`.
 
 `config.yml` highlights:
 

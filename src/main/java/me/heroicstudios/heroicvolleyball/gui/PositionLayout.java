@@ -9,7 +9,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 
 public final class PositionLayout {
 
-    public static final int SIZE = 27;
+    public static final int SIZE = 36;
 
     private static final int[] SLOTS = new int[7];
 
@@ -39,7 +39,7 @@ public final class PositionLayout {
     }
 
     public static void fillFrame(Inventory inventory) {
-        ItemStack frame = new ItemStack(Material.GRAY_STAINED_GLASS_PANE);
+        ItemStack frame = new ItemStack(Material.BLACK_STAINED_GLASS_PANE);
         ItemMeta meta = frame.getItemMeta();
         meta.displayName(Component.empty().decoration(TextDecoration.ITALIC, false));
         frame.setItemMeta(meta);

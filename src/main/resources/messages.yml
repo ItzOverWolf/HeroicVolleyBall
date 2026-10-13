@@ -19,17 +19,20 @@ general:
 tool:
   shovel-lore:
     - "<gray>Tier: {tier}"
-    - "<gray>Hit the ball to launch it up and forward"
+    - "<gray>Left-click the ball to bump it up and forward"
+    - "<gray>Higher tiers make the bump travel further and faster"
     - "<dark_gray><italic:false>Sneak + right-click to cycle power"
   sword-lore:
     - "<gray>Tier: {tier}"
-    - "<gray>Spike the ball forward"
-    - "<dark_gray><italic:false>Aim downward from above for a spike"
+    - "<gray>Left-click the ball to spike it forward"
+    - "<gray>Aim from above to slam it straight down fast"
+    - "<gray>Hit from below to pop it up and forward"
     - "<dark_gray><italic:false>Sneak + right-click to cycle power"
   shield-lore:
-    - "<blue>Left-click the middle or top to knock it forward and down"
-    - "<blue>Hold right-click underneath the ball to catch it up, like a free ball"
-    - "<dark_gray><italic:false>Shield hits never use a touch and start a cooldown"
+    - "<blue>Left-click the mid/top of the ball to knock it forward and down"
+    - "<blue>Hold right-click underneath the ball to catch and pop it up"
+    - "<blue>Shield hits never use a team touch"
+    - "<blue>Every shield use starts a short cooldown"
 
 wand:
   received: "<green>You received the Volleyball Wand. <gray>Left-click for point 1, right-click for point 2."
@@ -49,6 +52,11 @@ arena:
   enter: "<gray>You're in the {team} <gray>team's arena"
 
 ball:
+  name: "<aqua>Volleyball</aqua>"
+  lore:
+    - "<gray>Right-click a block inside your own court to place it"
+    - "<gray>Right-click the placed ball with an empty hand to pick it up"
+    - "<dark_gray><italic:false>Picking up only works before the round starts"
   spawned: "<green>The volleyball has been spawned at your location."
   bump: "<green><bold>BUMP</bold>  <gray>Ball Up"
   spike: "<red><bold>SPIKE</bold>  <gray>Ball Spike"
@@ -62,6 +70,7 @@ ball:
   pickup: "<green>You picked up the ball. Right-click your own court to place it."
   place: "<green>Ball placed. Shovel it to start the round."
   pickup-denied: "<red>The ball can only be picked up before the round starts"
+  pickup-backrow: "<red>You must be in the back row to pick up the ball"
   place-outside: "<red>The ball must be placed inside your team's area"
 
 score:
@@ -77,6 +86,10 @@ score:
 
 game:
   party-needs-even: "<red>A party needs an even number of players (2, 4, 6...) to start."
+  setup-missing: "<red><bold>Missing setup! <yellow>Fix everything below, then run /startgame again."
+  setup-missing-arena: "<red>- <yellow>{team}'s arena is not set <gray>(/setarena {color})"
+  setup-missing-positions: "<red>- <yellow>Positions are not set for {team} <gray>(sneak + right-click the wand to open the position menu)"
+  setup-missing-spawnpoint: "<red>- <yellow>The ball spawn point is not set <gray>(/setballspawnpoint)"
   party-choose: "<green>Choose your team and position to begin."
   solo-choose: "<green>Choose your position to start a solo game."
   solo-started: "<green>Solo game started at Position {position}."
@@ -129,6 +142,16 @@ give:
 gui:
   saved-actionbar: "<green>Saved <white>Position {position}</white> <gray>({row}) for {team}"
   saved-chat: "<green>Saved Position {position} ({row}) for Team {team} at <aqua>{location}</aqua>"
+
+backrow:
+  usage: "<red>Usage: /setbackrow <red|blue>"
+  unknown-team: "<red>Unknown team \"{input}\". Use red or blue."
+  set: "<gray>The {team} team's back row has been set: <aqua>{location}</aqua>"
+
+ballspawn:
+  usage: "<red>Usage: /setballspawnpoint [clear]"
+  set: "<green>Ball spawn point set to <aqua>{location}</aqua><green>. <gray>Picking the ball up and serving are now only allowed after placing it here."
+  cleared: "<yellow>Ball spawn point cleared. /spawnball will use your location again."
 
 music:
   usage: "<red>Usage: /volleymusic <start|stop|list|reload> [song]"

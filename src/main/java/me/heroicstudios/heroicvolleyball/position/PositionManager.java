@@ -85,6 +85,15 @@ public final class PositionManager {
         positionsFile.save();
     }
 
+    public boolean hasAllPositions(Team team) {
+        for (int position = 1; position <= 6; position++) {
+            if (getPosition(team, position) == null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     public float getFacing(Team team) {
         return (float) positionsFile.config().getDouble("facing." + team.name().toLowerCase(), 0.0D);
     }

@@ -211,6 +211,17 @@ public final class BallManager {
         if (!canPickupBall()) {
             return false;
         }
+        Team team = possession;
+        if (team == null && ball != null && ball.isValid()) {
+            team = arenaManager.getArenaAt(ball.getLocation());
+        }
+        if (team != null && plugin.getBackrowManager() != null) {
+            Arena backrow = plugin.getBackrowManager().getBackrow(team);
+            if (backrow != null && !backrow.contains(player.getLocation())) {
+                plugin.getMessages().actionBar(player, "ball.pickup-backrow");
+                return false;
+            }
+        }
         if (possession != null) {
             pickupTeam = possession;
         }
@@ -222,6 +233,8 @@ public final class BallManager {
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.getPersistentDataContainer().set(ballKey, PersistentDataType.BOOLEAN, true);
+            meta.displayName(plugin.getMessages().get("ball.name"));
+            meta.lore(plugin.getMessages().getLines("ball.lore"));
             item.setItemMeta(meta);
         }
 
@@ -243,8 +256,8 @@ public final class BallManager {
         if (pickupTeam == null) {
             return false;
         }
-        Arena arena = arenaManager.getArena(pickupTeam);
-        if (arena == null || !arena.contains(clicked.getLocation())) {
+        Arena region = placementRegion(pickupTeam);
+        if (region == null || !region.contains(clicked.getLocation())) {
             plugin.getMessages().actionBar(player, "ball.place-outside");
             return false;
         }
@@ -264,8 +277,25 @@ public final class BallManager {
         return true;
     }
 
+    private @Nullable Arena placementRegion(Team team) {
+        if (plugin.getBackrowManager() != null) {
+            Arena backrow = plugin.getBackrowManager().getBackrow(team);
+            if (backrow != null) {
+                return backrow;
+            }
+        }
+        return arenaManager.getArena(team);
+    }
+
     public void spawnAtPlayer(Player player) {
-        spawnBall(player.getLocation().add(0.0, 0.5, 0.0));
+        Location spawn = null;
+        if (plugin.getBallSpawnManager() != null) {
+            spawn = plugin.getBallSpawnManager().get();
+        }
+        if (spawn == null) {
+            spawn = player.getLocation().add(0.0, 0.5, 0.0);
+        }
+        spawnBall(spawn);
     }
 
     public boolean spawnAtStart() {
@@ -287,6 +317,9 @@ public final class BallManager {
         Location base = null;
         if (positionManager != null) {
             base = positionManager.getPosition(team, 6);
+        }
+        if (base == null && plugin.getBallSpawnManager() != null) {
+            base = plugin.getBallSpawnManager().get();
         }
         if (base == null) {
             base = arenaCenterFloor(team);

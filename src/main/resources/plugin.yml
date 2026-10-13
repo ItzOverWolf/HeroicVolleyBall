@@ -15,6 +15,14 @@ commands:
     description: Sets the selected region as a team's arena
     usage: /setarena <red|blue>
     permission: heroicvolleyball.setarena
+  setbackrow:
+    description: Sets the selected region as a team's back row
+    usage: /setbackrow <red|blue>
+    permission: heroicvolleyball.setbackrow
+  setballspawnpoint:
+    description: Saves where the ball should spawn, or clears it
+    usage: /setballspawnpoint [clear]
+    permission: heroicvolleyball.setballspawnpoint
   spawnball:
     description: Spawns the volleyball at your location
     usage: /spawnball
@@ -66,6 +74,12 @@ permissions:
     default: op
   heroicvolleyball.setarena:
     description: Allows use of /setarena
+    default: op
+  heroicvolleyball.setbackrow:
+    description: Allows use of /setbackrow
+    default: op
+  heroicvolleyball.setballspawnpoint:
+    description: Allows use of /setballspawnpoint
     default: op
   heroicvolleyball.spawnball:
     description: Allows use of /spawnball

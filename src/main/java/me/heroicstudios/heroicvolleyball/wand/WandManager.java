@@ -39,6 +39,8 @@ public final class WandManager {
                 Component.text("Right-click a block to set point 2", NamedTextColor.GRAY)
                         .decoration(TextDecoration.ITALIC, false),
                 Component.text("Then use /setarena <red|blue>", NamedTextColor.GRAY)
+                        .decoration(TextDecoration.ITALIC, false),
+                Component.text("Or /setbackrow <red|blue> for the serving zone", NamedTextColor.GRAY)
                         .decoration(TextDecoration.ITALIC, false)
         ));
         meta.setUnbreakable(true);
