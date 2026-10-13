@@ -3,6 +3,8 @@ package me.heroicstudios.heroicvolleyball.message;
 import java.io.File;
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
 import me.heroicstudios.heroicvolleyball.arena.Team;
@@ -62,6 +64,19 @@ public final class Messages {
 
     public Component get(String key, String... placeholders) {
         return parse(raw(key), placeholders);
+    }
+
+    public List<Component> getLines(String key, String... placeholders) {
+        List<String> lines = config.getStringList(key);
+        if (!lines.isEmpty()) {
+            List<Component> components = new ArrayList<>(lines.size());
+            for (String line : lines) {
+                components.add(parse(line, placeholders));
+            }
+            return components;
+        }
+        String single = config.getString(key);
+        return single == null ? List.of() : List.of(parse(single, placeholders));
     }
 
     public Component prefix() {

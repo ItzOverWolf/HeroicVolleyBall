@@ -1,8 +1,5 @@
 package me.heroicstudios.heroicvolleyball.tool;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -10,6 +7,7 @@ import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataContainer;
@@ -55,21 +53,18 @@ public final class ToolManager {
         ItemMeta meta = item.getItemMeta();
         meta.displayName(Component.text(displayName, color).decoration(TextDecoration.ITALIC, false));
 
-        List<Component> lore = new ArrayList<>();
-        if (tool == VolleyTool.SHOVEL) {
-            lore.add(loreLine("Tier: " + tier.getDisplayName(), tier.getColor()));
-            lore.add(loreLine("Hit the ball to launch it up and forward", NamedTextColor.GRAY));
-            lore.add(loreLine("Sneak + right-click to cycle power", NamedTextColor.DARK_GRAY));
-        } else if (tool == VolleyTool.SWORD) {
-            lore.add(loreLine("Tier: " + tier.getDisplayName(), tier.getColor()));
-            lore.add(loreLine("Hit the ball to spike it forward", NamedTextColor.GRAY));
-            lore.add(loreLine("Aim downward from above for a spike", NamedTextColor.DARK_GRAY));
-            lore.add(loreLine("Sneak + right-click to cycle power", NamedTextColor.DARK_GRAY));
-        } else {
-            lore.add(loreLine("Hit the ball with your shield to drive it down", NamedTextColor.GRAY));
-        }
-        meta.lore(lore);
+        String tierString = "<" + tier.getColor().asHexString() + ">" + tier.getDisplayName()
+                + "</" + tier.getColor().asHexString() + ">";
+        String loreKey = switch (tool) {
+            case SHOVEL -> "tool.shovel-lore";
+            case SWORD -> "tool.sword-lore";
+            default -> "tool.shield-lore";
+        };
+        meta.lore(plugin.getMessages().getLines(loreKey, "tier", tierString));
+
         meta.setUnbreakable(true);
+        meta.addItemFlags(ItemFlag.HIDE_ENCHANTS, ItemFlag.HIDE_ATTRIBUTES,
+                ItemFlag.HIDE_UNBREAKABLE, ItemFlag.HIDE_ADDITIONAL_TOOLTIP);
 
         PersistentDataContainer pdc = meta.getPersistentDataContainer();
         pdc.set(toolKey, PersistentDataType.STRING, tool.name());
@@ -143,10 +138,6 @@ public final class ToolManager {
         player.getInventory().addItem(create(VolleyTool.SHOVEL, VolleyTier.WOODEN));
         player.getInventory().addItem(create(VolleyTool.SWORD, VolleyTier.WOODEN));
         player.getInventory().addItem(create(VolleyTool.SHIELD, VolleyTier.WOODEN));
-    }
-
-    private Component loreLine(String text, NamedTextColor color) {
-        return Component.text(text, color).decoration(TextDecoration.ITALIC, false);
     }
 
     private Material shovelMaterial(VolleyTier tier) {

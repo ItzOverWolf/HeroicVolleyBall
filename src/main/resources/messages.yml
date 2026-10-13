@@ -14,6 +14,23 @@ general:
   no-permission: "<red>You do not have permission to do that."
   reloaded: "<green>Configuration and messages reloaded."
 
+# Item lore shown on the volleyball tools. Each list entry is one line and uses
+# MiniMessage, {tier} is the coloured tier name. Edit freely, reload live with /volleyreload.
+tool:
+  shovel-lore:
+    - "<gray>Tier: {tier}"
+    - "<gray>Hit the ball to launch it up and forward"
+    - "<dark_gray><italic:false>Sneak + right-click to cycle power"
+  sword-lore:
+    - "<gray>Tier: {tier}"
+    - "<gray>Spike the ball forward"
+    - "<dark_gray><italic:false>Aim downward from above for a spike"
+    - "<dark_gray><italic:false>Sneak + right-click to cycle power"
+  shield-lore:
+    - "<blue>Left-click the middle or top to knock it forward and down"
+    - "<blue>Hold right-click underneath the ball to catch it up, like a free ball"
+    - "<dark_gray><italic:false>Shield hits never use a touch and start a cooldown"
+
 wand:
   received: "<green>You received the Volleyball Wand. <gray>Left-click for point 1, right-click for point 2."
   point1: "<gray>Point 1 set to <aqua>{location}</aqua><gray>."
