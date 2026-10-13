@@ -23,7 +23,7 @@ per team, and rally a sulfur-cube ball using shovels, swords and shields.
 | `/volleywand` | Gives the selection wand (left-click point 1, right-click point 2, sneak + right-click to open the position menu). | `heroicvolleyball.volleywand` |
 | `/setarena <red\|blue> [direction]` | Sets the selected region as a team's arena and the direction that team faces. | `heroicvolleyball.setarena` |
 | `/setbackrow <red\|blue>` | Sets the selected region as a team's back row. The ball can only be picked up and placed there. | `heroicvolleyball.setbackrow` |
-| `/setballspawnpoint [clear]` | Saves your current location as the ball's spawn point (where it starts each serve). | `heroicvolleyball.setballspawnpoint` |
+| `/setballspawnpoint <red\|blue> [clear]` | Saves your current location as the team's ball spawn point (where the ball serves from). | `heroicvolleyball.setballspawnpoint` |
 | `/spawnball` | Spawns the volleyball, preferring the saved spawn point. | `heroicvolleyball.spawnball` |
 | `/startgame` | Players: opens the team/position picker. Console: serves the ball at Position 6. | `heroicvolleyball.startgame` |
 | `/stopgame` | Stops the game, removes the ball/music and resets the score. | `heroicvolleyball.stopgame` |
@@ -47,8 +47,9 @@ per team, and rally a sulfur-cube ball using shovels, swords and shields.
 5. Optional: select the back row of each team with the wand and save it with
    `/setbackrow <red|blue>`. When a team has a back row set, its ball can only be
    picked up and placed inside it (otherwise the whole arena is allowed).
-6. Optional: stand where the ball should start each serve and run
-   `/setballspawnpoint`. `/spawnball` and serve placements prefer it.
+6. Optional: stand where each team's ball should serve from and run
+   `/setballspawnpoint <red|blue>` (clear it with `[clear]`). `/spawnball` and serve
+   placements prefer it.
 7. Run `/startgame`. Party members pick a team and position; the ball serves from
    Position 6 and players are teleported into place.
 

@@ -289,8 +289,9 @@ public final class BallManager {
 
     public void spawnAtPlayer(Player player) {
         Location spawn = null;
-        if (plugin.getBallSpawnManager() != null) {
-            spawn = plugin.getBallSpawnManager().get();
+        Team team = arenaManager.getArenaAt(player.getLocation());
+        if (team != null && plugin.getBallSpawnManager() != null) {
+            spawn = plugin.getBallSpawnManager().get(team);
         }
         if (spawn == null) {
             spawn = player.getLocation().add(0.0, 0.5, 0.0);
@@ -319,7 +320,7 @@ public final class BallManager {
             base = positionManager.getPosition(team, 6);
         }
         if (base == null && plugin.getBallSpawnManager() != null) {
-            base = plugin.getBallSpawnManager().get();
+            base = plugin.getBallSpawnManager().get(team);
         }
         if (base == null) {
             base = arenaCenterFloor(team);

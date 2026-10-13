@@ -92,10 +92,11 @@ public final class StartGameCommand implements CommandExecutor {
                 missing.add(new String[]{"game.setup-missing-positions",
                         "team", Messages.teamDisplay(team)});
             }
-        }
-
-        if (!ballSpawnManager.isSet()) {
-            missing.add(new String[]{"game.setup-missing-spawnpoint"});
+            if (!ballSpawnManager.isSet(team)) {
+                missing.add(new String[]{"game.setup-missing-spawnpoint",
+                        "team", Messages.teamDisplay(team),
+                        "color", team.name().toLowerCase()});
+            }
         }
 
         if (missing.isEmpty()) {

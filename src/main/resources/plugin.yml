@@ -20,8 +20,8 @@ commands:
     usage: /setbackrow <red|blue>
     permission: heroicvolleyball.setbackrow
   setballspawnpoint:
-    description: Saves where the ball should spawn, or clears it
-    usage: /setballspawnpoint [clear]
+    description: Saves where the ball should serve from for a team, or clears it
+    usage: /setballspawnpoint <red|blue> [clear]
     permission: heroicvolleyball.setballspawnpoint
   spawnball:
     description: Spawns the volleyball at your location

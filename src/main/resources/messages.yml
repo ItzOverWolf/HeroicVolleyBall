@@ -89,7 +89,7 @@ game:
   setup-missing: "<red><bold>Missing setup! <yellow>Fix everything below, then run /startgame again."
   setup-missing-arena: "<red>- <yellow>{team}'s arena is not set <gray>(/setarena {color})"
   setup-missing-positions: "<red>- <yellow>Positions are not set for {team} <gray>(sneak + right-click the wand to open the position menu)"
-  setup-missing-spawnpoint: "<red>- <yellow>The ball spawn point is not set <gray>(/setballspawnpoint)"
+  setup-missing-spawnpoint: "<red>- <yellow>{team}'s ball spawn point is not set <gray>(/setballspawnpoint {color})"
   party-choose: "<green>Choose your team and position to begin."
   solo-choose: "<green>Choose your position to start a solo game."
   solo-started: "<green>Solo game started at Position {position}."
@@ -149,9 +149,10 @@ backrow:
   set: "<gray>The {team} team's back row has been set: <aqua>{location}</aqua>"
 
 ballspawn:
-  usage: "<red>Usage: /setballspawnpoint [clear]"
-  set: "<green>Ball spawn point set to <aqua>{location}</aqua><green>. <gray>Picking the ball up and serving are now only allowed after placing it here."
-  cleared: "<yellow>Ball spawn point cleared. /spawnball will use your location again."
+  usage: "<red>Usage: /setballspawnpoint <red|blue> [clear]"
+  unknown-team: "<red>Unknown team \"{input}\". Use red or blue."
+  set: "<green>Ball spawn point set for {team} at <aqua>{location}</aqua><green>. <gray>The ball will serve from here for this team."
+  cleared: "<yellow>Ball spawn point cleared for {team}."
 
 music:
   usage: "<red>Usage: /volleymusic <start|stop|list|reload> [song]"
