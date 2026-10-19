@@ -28,7 +28,7 @@ per team, and rally a sulfur-cube ball using shovels, swords and shields.
 | `/startgame [arena]` | Players: opens the team/position picker. Console: serves the ball at Position 6. | `heroicvolleyball.startgame` |
 | `/stopgame [arena]` | Stops the game, removes the ball/music and resets the score. | `heroicvolleyball.stopgame` |
 | `/restartgame [arena]` | Resets the score and respawns the ball at Position 6. | `heroicvolleyball.restartgame` |
-| `/volleyarena <create\|delete\|list\|info\|enable\|disable> [name]` | Manages arenas: create, inspect, toggle or delete a court setup. | `heroicvolleyball.volleyarena` |
+| `/volleyarena <create\|delete\|clone\|rename\|list\|info\|enable\|disable> [name] [name]` | Manages arenas: create, clone, rename, inspect, toggle or delete a court setup. | `heroicvolleyball.volleyarena` |
 | `/volleygive <shovel\|sword\|shield> [wooden\|iron\|diamond]` | Gives a volleyball tool. | `heroicvolleyball.volleygive` |
 | `/volleymusic <start\|stop\|list\|reload> [song]` | Controls Note Block Studio music. | `heroicvolleyball.volleymusic` |
 | `/volleyreload` | Reloads `config.yml` and `messages.yml`. | `heroicvolleyball.volleyreload` |
@@ -64,7 +64,12 @@ arena you are standing in, then the default arena (`arena.default`).
 `/startgame` refuses to start until the arena is complete and lists whatever is
 missing: team courts (`/setarena`), all six positions per team (wand menu) and the
 ball spawn point (`/setballspawnpoint`). Use `/volleyarena list` to see every arena
-and whether it is ready.
+and whether it is ready. A disabled arena cannot be started, and an arena that
+already has a live match refuses a second start; a player who is already in a game
+cannot join another one.
+
+Copy a finished court to make a second one with `/volleyarena clone <source> <new>`,
+or move it with `/volleyarena rename <old> <new>` (this stops any match in it first).
 
 ### Tools
 

@@ -42,7 +42,21 @@ public final class StartGameCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (!arena.isEnabled()) {
+            messages.send(sender, "game.arena-disabled", "arena", arena.getName());
+            return true;
+        }
+
+        if (sessionManager.hasLiveGame(arena)) {
+            messages.send(sender, "game.already-running", "arena", arena.getName());
+            return true;
+        }
+
         if (sender instanceof Player player) {
+            if (sessionManager.get(player) != null) {
+                messages.send(player, "game.already-in-game");
+                return true;
+            }
             if (!arena.isComplete()) {
                 messages.send(player, "game.setup-missing");
                 messages.send(player, "arena.still-incomplete", "arena", arena.getName());
@@ -54,12 +68,12 @@ public final class StartGameCommand implements CommandExecutor, TabCompleter {
                     messages.send(sender, "game.party-needs-even");
                     return true;
                 }
-                setupGui.open(player);
+                setupGui.open(player, arena);
                 messages.send(sender, "game.party-choose");
                 return true;
             }
 
-            setupGui.openSolo(player);
+            setupGui.openSolo(player, arena);
             messages.send(sender, "game.solo-choose");
             return true;
         }

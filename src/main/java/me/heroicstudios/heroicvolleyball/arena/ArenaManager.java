@@ -125,6 +125,42 @@ public final class ArenaManager {
         return created != null ? created : get(defaultName());
     }
 
+    public @Nullable Arena clone(String source, String newName) {
+        Arena origin = get(source);
+        if (origin == null) {
+            return null;
+        }
+        String name = sanitize(newName);
+        if (name == null || arenas.containsKey(name)) {
+            return null;
+        }
+        Arena copy = origin.copy(name);
+        arenas.put(name, copy);
+        save(copy);
+        return copy;
+    }
+
+    public boolean rename(String rawOldName, String rawNewName) {
+        Arena origin = get(rawOldName);
+        if (origin == null) {
+            return false;
+        }
+        String oldName = origin.getName();
+        String newName = sanitize(rawNewName);
+        if (newName == null || arenas.containsKey(newName)) {
+            return false;
+        }
+        arenas.remove(oldName);
+        File oldFile = fileFor(oldName);
+        if (oldFile.exists() && !oldFile.delete()) {
+            plugin.getLogger().warning("Could not delete renamed arena file: " + oldFile.getPath());
+        }
+        Arena renamed = origin.copy(newName);
+        arenas.put(newName, renamed);
+        save(renamed);
+        return true;
+    }
+
     public boolean delete(String rawName) {
         Arena arena = get(rawName);
         if (arena == null) {

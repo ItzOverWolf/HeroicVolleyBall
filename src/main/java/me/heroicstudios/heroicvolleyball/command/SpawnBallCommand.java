@@ -37,6 +37,16 @@ public final class SpawnBallCommand implements CommandExecutor {
             return true;
         }
 
+        if (!arena.isEnabled()) {
+            messages.send(player, "game.arena-disabled", "arena", arena.getName());
+            return true;
+        }
+
+        if (sessionManager.hasLiveGame(arena)) {
+            messages.send(player, "game.already-running", "arena", arena.getName());
+            return true;
+        }
+
         GameSession session = sessionManager.getOrCreate(arena);
         session.getBall().spawnAtPlayer(player);
         messages.send(player, "ball.spawned", "arena", arena.getName());

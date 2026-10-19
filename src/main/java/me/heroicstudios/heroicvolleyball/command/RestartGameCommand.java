@@ -34,6 +34,10 @@ public final class RestartGameCommand implements CommandExecutor, TabCompleter {
             messages.send(sender, "arena.none");
             return true;
         }
+        if (!arena.isEnabled()) {
+            messages.send(sender, "game.arena-disabled", "arena", arena.getName());
+            return true;
+        }
         GameSession session = sessionManager.get(arena);
         if (session == null) {
             messages.send(sender, "game.not-running", "arena", arena.getName());

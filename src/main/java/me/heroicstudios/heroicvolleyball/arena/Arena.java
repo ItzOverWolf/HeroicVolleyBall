@@ -192,4 +192,28 @@ public final class Arena {
         }
         return true;
     }
+
+    public Arena copy(String newName) {
+        Arena copy = new Arena(newName);
+        copy.enabled = this.enabled;
+        for (Side side : Side.values()) {
+            Region court = courts.get(side);
+            if (court != null) {
+                copy.setCourt(side, court);
+            }
+            Region backrow = backrows.get(side);
+            if (backrow != null) {
+                copy.setBackrow(side, backrow);
+            }
+            Location spawn = ballSpawns.get(side);
+            if (spawn != null) {
+                copy.setBallSpawn(side, spawn);
+            }
+            copy.setFacing(side, getFacing(side));
+            for (Map.Entry<Integer, Location> entry : positions.get(side).entrySet()) {
+                copy.setPosition(side, entry.getKey(), entry.getValue());
+            }
+        }
+        return copy;
+    }
 }

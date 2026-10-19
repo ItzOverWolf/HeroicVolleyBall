@@ -49,7 +49,7 @@ commands:
     permission: heroicvolleyball.volleyreload
   volleyarena:
     description: Creates, lists, inspects, enables or deletes arenas
-    usage: /volleyarena <create|delete|list|info|enable|disable> [name]
+    usage: /volleyarena <create|delete|clone|rename|list|info|enable|disable> [name] [name]
     permission: heroicvolleyball.volleyarena
   volleymusic:
     description: Plays Note Block Studio music for the game

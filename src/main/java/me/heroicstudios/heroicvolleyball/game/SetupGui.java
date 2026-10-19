@@ -45,13 +45,12 @@ public final class SetupGui implements Listener {
         this.partyManager = partyManager;
     }
 
-    public void open(Player leader) {
+    public void open(Player leader, Arena arena) {
         Party party = partyManager.getParty(leader);
         if (party == null) {
             return;
         }
 
-        Arena arena = plugin.getArenaManager().resolve(leader.getLocation());
         if (arena == null) {
             plugin.getMessages().send(leader, "arena.not-in-arena");
             return;
@@ -63,7 +62,16 @@ public final class SetupGui implements Listener {
 
         Setup setup = new Setup(arena);
         for (UUID uuid : party.getMembers()) {
+            Player member = Bukkit.getPlayer(uuid);
+            if (member != null && sessionManager.get(member) != null) {
+                plugin.getMessages().send(member, "game.already-in-game");
+                continue;
+            }
             setup.players.add(uuid);
+        }
+        if (setup.players.size() < 2 || setup.players.size() % 2 != 0) {
+            plugin.getMessages().send(leader, "game.party-needs-even");
+            return;
         }
         setup.maxPerTeam = setup.players.size() / 2;
 
@@ -75,8 +83,11 @@ public final class SetupGui implements Listener {
         }
     }
 
-    public void openSolo(Player player) {
-        Arena arena = plugin.getArenaManager().resolve(player.getLocation());
+    public void openSolo(Player player, Arena arena) {
+        if (sessionManager.get(player) != null) {
+            plugin.getMessages().send(player, "game.already-in-game");
+            return;
+        }
         if (arena == null) {
             plugin.getMessages().send(player, "arena.not-in-arena");
             return;
@@ -249,6 +260,10 @@ public final class SetupGui implements Listener {
                 return;
             }
             player.closeInventory();
+            if (sessionManager.hasLiveGame(holder.setup.arena)) {
+                plugin.getMessages().send(player, "game.already-running", "arena", holder.setup.arena.getName());
+                return;
+            }
             sessionManager.startSolo(holder.setup.arena, player, number);
             plugin.getMessages().send(player, "game.solo-started", "position", String.valueOf(number));
             return;
@@ -328,6 +343,24 @@ public final class SetupGui implements Listener {
     private void maybeStart(Setup setup) {
         if (setup.teams.size() != setup.players.size() || setup.positions.size() != setup.players.size()) {
             return;
+        }
+
+        if (sessionManager.hasLiveGame(setup.arena)) {
+            for (UUID uuid : setup.players) {
+                Player player = Bukkit.getPlayer(uuid);
+                if (player != null) {
+                    plugin.getMessages().send(player, "game.already-running", "arena", setup.arena.getName());
+                }
+            }
+            return;
+        }
+
+        for (UUID uuid : setup.players) {
+            Player player = Bukkit.getPlayer(uuid);
+            if (player != null && sessionManager.get(player) != null) {
+                plugin.getMessages().send(player, "game.already-in-game");
+                return;
+            }
         }
 
         Map<UUID, Side> teams = new LinkedHashMap<>(setup.teams);
