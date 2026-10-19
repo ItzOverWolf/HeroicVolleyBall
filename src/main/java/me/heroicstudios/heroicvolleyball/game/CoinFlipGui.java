@@ -126,14 +126,14 @@ public final class CoinFlipGui implements Listener {
         inventory.setItem(CENTER, wool(result));
 
         Component title = messages.get("game.coin-flip-title");
-        Component subtitle = messages.get("game.coin-flip-result", "team", Messages.teamDisplay(result));
+        Component subtitle = messages.get("game.coin-flip-result", "team", Messages.teamDisplay(session.getArena(), result));
         for (Player player : viewers) {
             if (player != null && player.isOnline()) {
                 player.showTitle(Messages.noFade(title, subtitle));
                 player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.4f);
             }
         }
-        session.broadcast(messages.getPrefixed("game.coin-flip-broadcast", "team", Messages.teamDisplay(result)));
+        session.broadcast(messages.getPrefixed("game.coin-flip-broadcast", "team", Messages.teamDisplay(session.getArena(), result)));
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (gen != generation) {
@@ -173,7 +173,7 @@ public final class CoinFlipGui implements Listener {
     private ItemStack wool(Side side) {
         ItemStack item = new ItemStack(side.getWool());
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text("Serves first", side.getColor())
+        meta.displayName(Component.text("Serves first", session.getArena().teamColor(side))
                 .decoration(TextDecoration.ITALIC, false)
                 .decoration(TextDecoration.BOLD, true));
         item.setItemMeta(meta);

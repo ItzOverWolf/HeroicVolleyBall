@@ -8,6 +8,7 @@ import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
 import me.heroicstudios.heroicvolleyball.arena.Side;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -33,7 +34,7 @@ public final class PositionGui implements InventoryHolder {
         this.arena = arena;
         this.arenaManager = arenaManager;
         this.inventory = Bukkit.createInventory(this, PositionLayout.SIZE,
-                Component.text("Set " + side.getDisplayName() + " position"));
+                Component.text("Set " + arena.teamName(side) + " position"));
         PositionLayout.fillFrame(inventory);
         fillPositions();
     }
@@ -56,11 +57,11 @@ public final class PositionGui implements InventoryHolder {
             lore.add(line("Click to set here", NamedTextColor.GREEN));
 
             inventory.setItem(PositionLayout.slot(position),
-                    item(material, "Position " + position, side.getColor(), lore));
+                    item(material, "Position " + position, arena.teamColor(side), lore));
         }
     }
 
-    private ItemStack item(Material material, String name, NamedTextColor color, List<Component> lore) {
+    private ItemStack item(Material material, String name, TextColor color, List<Component> lore) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
         meta.displayName(Component.text(name, color)

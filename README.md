@@ -121,8 +121,10 @@ config:
   inserted into existing files automatically on startup and on `/volleyreload`
   (existing values are never overwritten), so you never need to delete it.
 - `arenas/<name>.yml` – one file per arena, holding its courts, back rows, ball
-  spawn points and positions `1`–`6` per team plus each team's facing direction.
-  Manage them with `/volleyarena`.
+  spawn points and positions `1`–`6` per team, each team's facing direction,
+  per-team display name/colour (`teams.<red|blue>.name` / `.color`) and the
+  optional `lobby` and `spectator-spawn` locations. Manage them with
+  `/volleyarena`.
 - Older single-arena installs (`arenas.yml`, `positions.yml`, `backrow.yml`,
   `ballspawn.yml`) are migrated into `arenas/default.yml` on first start and the
   originals are renamed to `*.legacy`.

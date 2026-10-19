@@ -71,7 +71,7 @@ public final class GuiListener implements Listener {
 
             player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
             String row = (positionNumber >= 2 && positionNumber <= 4) ? "Front Row" : "Back Row";
-            String teamTag = Messages.teamDisplay(side);
+            String teamTag = Messages.teamDisplay(arena, side);
             messages.actionBar(player, "gui.saved-actionbar",
                     "position", String.valueOf(positionNumber), "row", row, "team", teamTag,
                     "arena", arena.getName());

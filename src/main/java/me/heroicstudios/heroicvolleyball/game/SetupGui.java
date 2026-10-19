@@ -9,6 +9,7 @@ import me.heroicstudios.heroicvolleyball.party.Party;
 import me.heroicstudios.heroicvolleyball.party.PartyManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -158,14 +159,14 @@ public final class SetupGui implements Listener {
     private ItemStack teamItem(Side side, Setup setup) {
         ItemStack item = new ItemStack(side.getWool());
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text(side.getDisplayName() + " Team", side.getColor())
+        meta.displayName(Component.text(setup.arena.teamName(side) + " Team", setup.arena.teamColor(side))
                 .decoration(TextDecoration.ITALIC, false));
 
         List<Component> lore = new ArrayList<>();
         int count = 0;
         for (Map.Entry<UUID, Side> entry : setup.teams.entrySet()) {
             if (entry.getValue() == side) {
-                lore.add(loreLine(" - " + nameOf(entry.getKey()), side.getColor()));
+                lore.add(loreLine(" - " + nameOf(entry.getKey()), setup.arena.teamColor(side)));
                 count++;
             }
         }
@@ -181,7 +182,7 @@ public final class SetupGui implements Listener {
     private ItemStack positionItem(Setup setup, Side side, int number) {
         ItemStack item = new ItemStack(side.getWool());
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text("Position " + number, side.getColor())
+        meta.displayName(Component.text("Position " + number, setup.arena.teamColor(side))
                 .decoration(TextDecoration.ITALIC, false));
 
         List<Component> lore = new ArrayList<>();
@@ -220,7 +221,7 @@ public final class SetupGui implements Listener {
         return item;
     }
 
-    private Component loreLine(String text, NamedTextColor color) {
+    private Component loreLine(String text, TextColor color) {
         return Component.text(text, color).decoration(TextDecoration.ITALIC, false);
     }
 
@@ -384,7 +385,7 @@ public final class SetupGui implements Listener {
             if (side != null) {
                 Player p = Bukkit.getPlayer(uuid);
                 if (p != null) {
-                    String teamTag = Messages.teamDisplay(side);
+                    String teamTag = Messages.teamDisplay(setup.arena, side);
                     p.showTitle(Messages.noFade(
                             plugin.getMessages().get("game.assigned-title", "team", teamTag),
                             plugin.getMessages().get("game.assigned-subtitle", "team", teamTag)));

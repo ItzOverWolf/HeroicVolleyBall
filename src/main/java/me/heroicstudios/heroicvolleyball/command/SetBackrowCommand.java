@@ -72,7 +72,7 @@ public final class SetBackrowCommand implements CommandExecutor, TabCompleter {
         arenaManager.save(arena);
 
         messages.send(player, "backrow.set",
-                "team", Messages.teamDisplay(side),
+                "team", Messages.teamDisplay(arena, side),
                 "arena", arena.getName(),
                 "location", first.getBlockX() + ", " + first.getBlockY() + ", " + first.getBlockZ()
                         + " -> " + second.getBlockX() + ", " + second.getBlockY() + ", " + second.getBlockZ());

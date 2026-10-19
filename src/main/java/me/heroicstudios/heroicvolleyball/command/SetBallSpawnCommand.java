@@ -59,14 +59,14 @@ public final class SetBallSpawnCommand implements CommandExecutor, TabCompleter 
             arena.setBallSpawn(side, null);
             arenaManager.save(arena);
             messages.send(player, "ballspawn.cleared",
-                    "team", Messages.teamDisplay(side), "arena", arena.getName());
+                    "team", Messages.teamDisplay(arena, side), "arena", arena.getName());
             return true;
         }
 
         arena.setBallSpawn(side, player.getLocation());
         arenaManager.save(arena);
         messages.send(player, "ballspawn.set",
-                "team", Messages.teamDisplay(side),
+                "team", Messages.teamDisplay(arena, side),
                 "arena", arena.getName(),
                 "location", player.getLocation().getBlockX() + ", " + player.getLocation().getBlockY()
                         + ", " + player.getLocation().getBlockZ());

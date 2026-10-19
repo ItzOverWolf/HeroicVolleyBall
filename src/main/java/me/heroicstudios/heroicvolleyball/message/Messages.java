@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
+import me.heroicstudios.heroicvolleyball.arena.Arena;
 import me.heroicstudios.heroicvolleyball.arena.Side;
 import me.heroicstudios.heroicvolleyball.util.ConfigDefaults;
 import net.kyori.adventure.text.Component;
@@ -108,11 +109,11 @@ public final class Messages {
                 Title.Times.times(Duration.ZERO, Duration.ofSeconds(2), Duration.ofMillis(500)));
     }
 
-    public static String teamDisplay(Side side) {
-        return "<" + side.getId() + ">" + side.getDisplayName() + "</" + side.getId() + ">";
+    public static String teamDisplay(Arena arena, Side side) {
+        return arena != null ? arena.teamDisplay(side) : side.getDisplayName();
     }
 
-    public static String colorName(Side side) {
-        return side.getId();
+    public static String colorName(Arena arena, Side side) {
+        return arena != null ? arena.teamColorHex(side) : side.getId();
     }
 }

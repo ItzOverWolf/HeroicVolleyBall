@@ -1,5 +1,6 @@
 package me.heroicstudios.heroicvolleyball.arena;
 
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -18,6 +19,10 @@ public final class Arena {
     private final EnumMap<Side, Location> ballSpawns = new EnumMap<>(Side.class);
     private final EnumMap<Side, Float> facings = new EnumMap<>(Side.class);
     private final EnumMap<Side, Map<Integer, Location>> positions = new EnumMap<>(Side.class);
+    private final EnumMap<Side, String> teamNames = new EnumMap<>(Side.class);
+    private final EnumMap<Side, TextColor> teamColors = new EnumMap<>(Side.class);
+    private Location lobby;
+    private Location spectatorSpawn;
 
     public Arena(String name) {
         this.name = name;
@@ -109,6 +114,55 @@ public final class Arena {
             }
         }
         return true;
+    }
+
+    public String teamName(Side side) {
+        return teamNames.getOrDefault(side, side.getDisplayName());
+    }
+
+    public void setTeamName(Side side, @Nullable String name) {
+        if (name == null || name.isBlank()) {
+            teamNames.remove(side);
+        } else {
+            teamNames.put(side, name);
+        }
+    }
+
+    public TextColor teamColor(Side side) {
+        return teamColors.getOrDefault(side, side.getColor());
+    }
+
+    public void setTeamColor(Side side, @Nullable TextColor color) {
+        if (color == null) {
+            teamColors.remove(side);
+        } else {
+            teamColors.put(side, color);
+        }
+    }
+
+    public String teamColorHex(Side side) {
+        return teamColor(side).asHexString();
+    }
+
+    public String teamDisplay(Side side) {
+        String hex = teamColorHex(side);
+        return "<" + hex + ">" + teamName(side) + "</" + hex + ">";
+    }
+
+    public @Nullable Location getLobby() {
+        return lobby != null ? lobby.clone() : null;
+    }
+
+    public void setLobby(@Nullable Location location) {
+        this.lobby = location != null && location.getWorld() != null ? location.clone() : null;
+    }
+
+    public @Nullable Location getSpectatorSpawn() {
+        return spectatorSpawn != null ? spectatorSpawn.clone() : null;
+    }
+
+    public void setSpectatorSpawn(@Nullable Location location) {
+        this.spectatorSpawn = location != null && location.getWorld() != null ? location.clone() : null;
     }
 
     public @Nullable Side getCourtSide(Location location) {
@@ -213,7 +267,11 @@ public final class Arena {
             for (Map.Entry<Integer, Location> entry : positions.get(side).entrySet()) {
                 copy.setPosition(side, entry.getKey(), entry.getValue());
             }
+            copy.setTeamName(side, teamNames.get(side));
+            copy.setTeamColor(side, teamColors.get(side));
         }
+        copy.setLobby(lobby);
+        copy.setSpectatorSpawn(spectatorSpawn);
         return copy;
     }
 }

@@ -155,6 +155,7 @@ public final class HeroicVolleyBall extends JavaPlugin {
         }
         if (arenaManager != null) {
             isolateShutdown("arena save", arenaManager::saveAll);
+            isolateShutdown("arena io", arenaManager::shutdown);
         }
     }
 

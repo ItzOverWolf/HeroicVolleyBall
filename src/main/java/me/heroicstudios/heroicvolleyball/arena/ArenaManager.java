@@ -1,6 +1,7 @@
 package me.heroicstudios.heroicvolleyball.arena;
 
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -20,12 +21,21 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
 
 public final class ArenaManager {
 
     private final HeroicVolleyBall plugin;
     private final File folder;
     private final Map<String, Arena> arenas = new LinkedHashMap<>();
+    private final ExecutorService ioExecutor = Executors.newSingleThreadExecutor(task -> {
+        Thread thread = new Thread(task, "HeroicVolleyBall-ArenaIO");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     public ArenaManager(HeroicVolleyBall plugin) {
         this.plugin = plugin;
@@ -35,6 +45,17 @@ public final class ArenaManager {
         }
         migrateLegacy();
         loadAll();
+    }
+
+    public void shutdown() {
+        ioExecutor.shutdown();
+        try {
+            if (!ioExecutor.awaitTermination(5, TimeUnit.SECONDS)) {
+                plugin.getLogger().warning("Timed out flushing arena saves to disk.");
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     public void loadAll() {
@@ -151,10 +172,7 @@ public final class ArenaManager {
             return false;
         }
         arenas.remove(oldName);
-        File oldFile = fileFor(oldName);
-        if (oldFile.exists() && !oldFile.delete()) {
-            plugin.getLogger().warning("Could not delete renamed arena file: " + oldFile.getPath());
-        }
+        submit(() -> deleteFile(oldName));
         Arena renamed = origin.copy(newName);
         arenas.put(newName, renamed);
         save(renamed);
@@ -167,33 +185,50 @@ public final class ArenaManager {
             return false;
         }
         arenas.remove(arena.getName());
-        File file = fileFor(arena.getName());
-        if (file.exists() && !file.delete()) {
-            plugin.getLogger().warning("Could not delete arena file: " + file.getPath());
-        }
+        submit(() -> deleteFile(arena.getName()));
         return true;
     }
 
     public void save(Arena arena) {
-        Path target = fileFor(arena.getName()).toPath();
-        Path temp = target.resolveSibling(target.getFileName() + ".tmp");
+        // Serialize on the main thread; only the file I/O runs off-thread.
         YamlConfiguration config = toYaml(arena);
+        submit(() -> write(arena.getName(), config));
+    }
+
+    public void saveAll() {
+        for (Arena arena : arenas.values()) {
+            write(arena.getName(), toYaml(arena));
+        }
+    }
+
+    private void submit(Runnable task) {
+        try {
+            ioExecutor.execute(task);
+        } catch (RejectedExecutionException exception) {
+            task.run();
+        }
+    }
+
+    private void deleteFile(String arenaName) {
+        File file = fileFor(arenaName);
+        if (file.exists() && !file.delete()) {
+            plugin.getLogger().warning("Could not delete arena file: " + file.getPath());
+        }
+    }
+
+    private void write(String arenaName, YamlConfiguration config) {
+        Path target = fileFor(arenaName).toPath();
+        Path temp = target.resolveSibling(target.getFileName() + ".tmp");
         try {
             Files.createDirectories(target.getParent());
             config.save(temp.toFile());
             move(temp, target);
         } catch (IOException exception) {
-            plugin.getLogger().warning("Could not save arena " + arena.getName() + ": " + exception.getMessage());
+            plugin.getLogger().warning("Could not save arena " + arenaName + ": " + exception.getMessage());
             try {
                 Files.deleteIfExists(temp);
             } catch (IOException ignored) {
             }
-        }
-    }
-
-    public void saveAll() {
-        for (Arena arena : arenas.values()) {
-            save(arena);
         }
     }
 
@@ -273,7 +308,17 @@ public final class ArenaManager {
                     arena.setPosition(side, number, position);
                 }
             }
+            arena.setTeamName(side, config.getString("teams." + side.getId() + ".name"));
+            String colorHex = config.getString("teams." + side.getId() + ".color");
+            if (colorHex != null) {
+                TextColor color = TextColor.fromHexString(colorHex);
+                if (color != null) {
+                    arena.setTeamColor(side, color);
+                }
+            }
         }
+        arena.setLobby(readLocation(config, "lobby"));
+        arena.setSpectatorSpawn(readLocation(config, "spectator-spawn"));
         return arena;
     }
 
@@ -296,6 +341,14 @@ public final class ArenaManager {
                     config.set("positions." + id + "." + number, position);
                 }
             }
+            config.set("teams." + id + ".name", arena.teamName(side));
+            config.set("teams." + id + ".color", arena.teamColorHex(side));
+        }
+        if (arena.getLobby() != null) {
+            config.set("lobby", arena.getLobby());
+        }
+        if (arena.getSpectatorSpawn() != null) {
+            config.set("spectator-spawn", arena.getSpectatorSpawn());
         }
         return config;
     }

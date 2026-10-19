@@ -1,6 +1,7 @@
 package me.heroicstudios.heroicvolleyball.score;
 
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
+import me.heroicstudios.heroicvolleyball.arena.Arena;
 import me.heroicstudios.heroicvolleyball.arena.Side;
 import me.heroicstudios.heroicvolleyball.game.Countdown;
 import me.heroicstudios.heroicvolleyball.game.GameSession;
@@ -108,8 +109,9 @@ public final class ScoreManager {
 
     public void redraw() {
         scoreLine.customName(Component.text("Score: " + redPoints + " - " + bluePoints, NamedTextColor.WHITE));
-        redLine.customName(Component.text("Red: " + redSets, Side.RED.getColor()));
-        blueLine.customName(Component.text("Blue: " + blueSets, Side.BLUE.getColor()));
+        Arena arena = session.getArena();
+        redLine.customName(Component.text(arena.teamName(Side.RED) + ": " + redSets, arena.teamColor(Side.RED)));
+        blueLine.customName(Component.text(arena.teamName(Side.BLUE) + ": " + blueSets, arena.teamColor(Side.BLUE)));
     }
 
     public void apply(Player player) {
@@ -147,7 +149,7 @@ public final class ScoreManager {
         }
 
         Messages messages = plugin.getMessages();
-        String teamTag = Messages.teamDisplay(side);
+        String teamTag = Messages.teamDisplay(session.getArena(), side);
         String red = String.valueOf(redPoints);
         String blue = String.valueOf(bluePoints);
 
@@ -184,7 +186,7 @@ public final class ScoreManager {
         bluePoints = 0;
 
         Messages messages = plugin.getMessages();
-        String teamTag = Messages.teamDisplay(side);
+        String teamTag = Messages.teamDisplay(session.getArena(), side);
         String redSetsText = String.valueOf(redSets);
         String blueSetsText = String.valueOf(blueSets);
 
@@ -242,7 +244,7 @@ public final class ScoreManager {
                     if (broadcastPoints) {
                         session.broadcast(messages.get("game.round-start",
                                 "round", String.valueOf(nextRound),
-                                "team", Messages.teamDisplay(nextServer)));
+                                "team", Messages.teamDisplay(session.getArena(), nextServer)));
                     }
                     session.startNextRound(nextServer);
                 },

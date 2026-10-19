@@ -85,7 +85,7 @@ public final class SetArenaCommand implements CommandExecutor, TabCompleter {
         arenaManager.save(arena);
 
         messages.send(player, "arena.set",
-                "team", Messages.teamDisplay(side),
+                "team", Messages.teamDisplay(arena, side),
                 "arena", arena.getName(),
                 "facing", describeYaw(yaw));
 

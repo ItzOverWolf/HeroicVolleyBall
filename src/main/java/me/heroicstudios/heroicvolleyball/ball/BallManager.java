@@ -1255,7 +1255,7 @@ public final class BallManager {
         }
         Countdown.run(plugin, pointCountdown, session.players(),
                 "game.point-countdown-title", "game.point-countdown-subtitle",
-                () -> performServeReset(team), "team", Messages.teamDisplay(team));
+                () -> performServeReset(team), "team", Messages.teamDisplay(arena, team));
     }
 
     private void performServeReset(Side team) {
@@ -1297,7 +1297,7 @@ public final class BallManager {
         if (state == State.IDLE) {
             name = messages.get("ball.name-serve");
         } else {
-            String color = possession != null ? Messages.colorName(possession) : "gray";
+            String color = possession != null ? Messages.colorName(arena, possession) : "gray";
             name = messages.get("ball.name-touches",
                     "color", color,
                     "touches", String.valueOf(Math.max(touches, 0)),

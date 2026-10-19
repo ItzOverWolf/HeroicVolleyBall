@@ -57,7 +57,7 @@ public final class ArenaListener implements Listener {
         } else {
             currentArenas.put(uuid, current);
             messages.actionBar(player, "arena.enter",
-                    "team", Messages.teamDisplay(current.side()),
+                    "team", Messages.teamDisplay(current.arena(), current.side()),
                     "arena", current.arena().getName());
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.6f, 1.6f);
         }
