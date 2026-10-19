@@ -130,16 +130,11 @@ config:
 `config.yml` highlights:
 
 - `ball.*` – size, `max-touches`, `gravity`, `air-drag`, `velocity-scale`,
-  `max-velocity`, spike speeds, `shovel-forward`, `shield-deflect`, `bounce`,
-  `serve-reset-delay`, `show-name`, and per-tier `power`.
+  `max-velocity`, spike speeds, `shovel-forward`, `bounce`, `serve-reset-delay`,
+  `show-name`, and per-tier `power`.
 - `ball.shield.*` – deflect/forward speeds on a middle/top shield hit, the upward
   power and reach/height of the bottom shield catch, and the shield cooldown in
   ticks after any shield use.
-- `ball.sulfur-cube` – `true` keeps the vanilla sulfur cube with the item inside
-  it; `false` hides the cube and shows only the configured item floating as the
-  ball. Changeable live with `/volleyreload`.
-- `ball.cube-invisible` – hides just the cube model (item, physics and touches
-  untouched) for experimenting.
 - `ball.material` – the ball's appearance (and the item you pick up). Any
   block/item material name works (`GRAY_WOOL`, `SLIME_BALL`, `DIAMOND`,
   `PLAYER_HEAD`, ...). Wools tint red/blue by which court the ball is over.
@@ -162,6 +157,9 @@ config:
   while a game runs (set a level to `0` to disable it).
 - `game.titles`, `game.broadcast-points` – on-screen titles and chat announcements.
 - `scoreboard.enabled` – toggles the sidebar scoreboard.
+- `scoreboard.viewers` – when `true`, players standing in an arena but not playing
+  that match see the live sidebar as spectators (removed when they leave or the
+  match ends).
 - `party.max-size` – maximum party size (must be even to start).
 - `tools.reach-bonus` – extra interaction range while a game is running.
 - `music.{enabled,song,volume}` – Note Block Studio track in `plugins/HeroicVolleyBall/music/`.

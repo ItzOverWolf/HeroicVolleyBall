@@ -175,6 +175,10 @@ game:
 # Sidebar scoreboard shown to every player.
 scoreboard:
   enabled: true
+  # Also show the live sidebar to players standing inside an arena who are not
+  # playing that match (spectators), and remove it when they step out or the
+  # match ends.
+  viewers: true
 
 # Party settings for multiplayer games.
 party:

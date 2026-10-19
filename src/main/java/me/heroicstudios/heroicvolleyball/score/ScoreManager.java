@@ -125,6 +125,16 @@ public final class ScoreManager {
         }
     }
 
+    public boolean isBoard(Player player) {
+        return player.getScoreboard() == board;
+    }
+
+    public void restoreBoard(Player player) {
+        if (isBoard(player)) {
+            player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
+        }
+    }
+
     public void addPoint(Side side) {
         if (matchOver || roundTransition) {
             return;
