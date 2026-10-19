@@ -85,6 +85,11 @@ ball:
   # When the ball is invisible, the name is carried by a hologram so it stays
   # visible to every player (vanilla hides name tags on invisible mobs).
   show-name: true
+  # Dark plate behind the hologram text so it stays readable against the sky
+  # and the court. "#RRGGBB" gets 90% opacity automatically, "#AARRGGBB" sets
+  # alpha yourself (00 = clear, FF = solid), "none" disables the plate.
+  # Reload live with /volleyreload.
+  name-background: "#E6141A20"
   # If true, players can right-click the ball with an empty hand to pick it up
   # into their inventory, then right-click a block in the ball's team area to
   # place it back. Only allowed while the round has not started (the ball has

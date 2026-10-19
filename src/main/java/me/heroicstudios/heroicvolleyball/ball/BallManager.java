@@ -129,6 +129,8 @@ public final class BallManager {
     private int pointCountdown = 3;
     private boolean touchPenalty = true;
     private boolean showName = true;
+    private String nameBackground = "#E6141A20";
+    private @Nullable String appliedNameBackground;
     private boolean pickupEnabled = true;
     private Material ballMaterial = Material.GRAY_WOOL;
     private String ballTexture = "";
@@ -189,6 +191,7 @@ public final class BallManager {
         this.pointCountdown = Math.max(0, config.getInt("game.point-countdown", 3));
         this.touchPenalty = config.getBoolean("game.opponent-touch-penalty", true);
         this.showName = config.getBoolean("ball.show-name", true);
+        this.nameBackground = config.getString("ball.name-background", "#E6141A20");
         this.pickupEnabled = config.getBoolean("ball.pickup-enabled", true);
         this.ballMaterial = parseBallMaterial(config.getString("ball.material", "GRAY_WOOL"));
         this.ballTexture = config.getString("ball.texture", "");
@@ -1199,6 +1202,9 @@ public final class BallManager {
             return;
         }
         if (ballNameDisplay != null && ballNameDisplay.isValid()) {
+            if (!nameBackground.equals(appliedNameBackground)) {
+                applyNameBackground(ballNameDisplay);
+            }
             ballNameDisplay.text(name);
             ballNameDisplay.teleport(location);
             return;
@@ -1215,8 +1221,7 @@ public final class BallManager {
                     display.setSilent(true);
                     display.setShadowed(false);
                     display.setSeeThrough(false);
-                    display.setDefaultBackground(false);
-                    display.setBackgroundColor(Color.fromARGB(0));
+                    applyNameBackground(display);
                     display.getPersistentDataContainer().set(ballKey, PersistentDataType.BOOLEAN, true);
                     // 1 = the client glides to each new position over one tick,
                     // matching how it interpolates the ball entity itself.
@@ -1226,11 +1231,50 @@ public final class BallManager {
                 });
     }
 
+    private void applyNameBackground(TextDisplay display) {
+        Color background = nameBackgroundColor();
+        display.setDefaultBackground(false);
+        display.setBackgroundColor(background != null ? background : Color.fromARGB(0));
+        appliedNameBackground = nameBackground;
+    }
+
+    /**
+     * Parses ball.name-background: "#AARRGGBB" or "#RRGGBB" (alpha defaults to
+     * 90%), or "none" for no plate at all. Invalid values warn once per value
+     * and fall back to the default dark plate.
+     */
+    private @Nullable Color nameBackgroundColor() {
+        if (nameBackground == null) {
+            return null;
+        }
+        String hex = nameBackground.trim();
+        if (hex.isEmpty() || hex.equalsIgnoreCase("none")) {
+            return null;
+        }
+        if (hex.startsWith("#")) {
+            hex = hex.substring(1);
+        }
+        try {
+            long argb = Long.parseUnsignedLong(hex, 16);
+            if (hex.length() == 6) {
+                argb |= 0xE6000000L;
+            }
+            return Color.fromARGB((int) argb);
+        } catch (NumberFormatException e) {
+            if (!nameBackground.equals(appliedNameBackground)) {
+                plugin.getLogger().warning("Invalid ball.name-background '" + nameBackground
+                        + "' - expected #RRGGBB, #AARRGGBB or none. Falling back to the default.");
+            }
+            return Color.fromARGB(0xE6141A20);
+        }
+    }
+
     private void removeNameDisplay() {
         if (ballNameDisplay != null) {
             ballNameDisplay.remove();
             ballNameDisplay = null;
         }
+        appliedNameBackground = null;
     }
 
     private double shovelPower(VolleyTier tier) {
