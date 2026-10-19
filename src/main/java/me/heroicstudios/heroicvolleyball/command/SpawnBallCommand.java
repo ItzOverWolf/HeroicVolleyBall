@@ -1,20 +1,26 @@
 package me.heroicstudios.heroicvolleyball.command;
 
-import me.heroicstudios.heroicvolleyball.ball.BallManager;
+import me.heroicstudios.heroicvolleyball.arena.Arena;
+import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
+import me.heroicstudios.heroicvolleyball.game.GameSession;
+import me.heroicstudios.heroicvolleyball.game.SessionManager;
 import me.heroicstudios.heroicvolleyball.message.Messages;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public final class SpawnBallCommand implements CommandExecutor {
 
-    private final BallManager ballManager;
+    private final SessionManager sessionManager;
+    private final ArenaManager arenaManager;
     private final Messages messages;
 
-    public SpawnBallCommand(BallManager ballManager, Messages messages) {
-        this.ballManager = ballManager;
+    public SpawnBallCommand(SessionManager sessionManager, ArenaManager arenaManager, Messages messages) {
+        this.sessionManager = sessionManager;
+        this.arenaManager = arenaManager;
         this.messages = messages;
     }
 
@@ -25,8 +31,23 @@ public final class SpawnBallCommand implements CommandExecutor {
             return true;
         }
 
-        ballManager.spawnAtPlayer(player);
-        messages.send(player, "ball.spawned");
+        Arena arena = resolve(player, args.length >= 1 ? args[0] : null);
+        if (arena == null) {
+            messages.send(player, "arena.none");
+            return true;
+        }
+
+        GameSession session = sessionManager.getOrCreate(arena);
+        session.getBall().spawnAtPlayer(player);
+        messages.send(player, "ball.spawned", "arena", arena.getName());
         return true;
+    }
+
+    private @Nullable Arena resolve(Player player, @Nullable String name) {
+        if (name != null && !name.isBlank()) {
+            return arenaManager.get(name);
+        }
+        Arena arena = arenaManager.arenaAt(player.getLocation());
+        return arena != null ? arena : arenaManager.getDefault();
     }
 }

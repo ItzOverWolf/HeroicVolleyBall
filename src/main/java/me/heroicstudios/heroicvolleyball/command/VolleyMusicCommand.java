@@ -4,22 +4,29 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
+import me.heroicstudios.heroicvolleyball.arena.Arena;
+import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
+import me.heroicstudios.heroicvolleyball.game.GameSession;
+import me.heroicstudios.heroicvolleyball.game.SessionManager;
 import me.heroicstudios.heroicvolleyball.message.Messages;
 import me.heroicstudios.heroicvolleyball.music.MusicManager;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 public final class VolleyMusicCommand implements CommandExecutor, TabCompleter {
 
-    private final MusicManager musicManager;
+    private final SessionManager sessionManager;
+    private final ArenaManager arenaManager;
     private final Messages messages;
 
-    public VolleyMusicCommand(MusicManager musicManager, Messages messages) {
-        this.musicManager = musicManager;
+    public VolleyMusicCommand(SessionManager sessionManager, ArenaManager arenaManager, Messages messages) {
+        this.sessionManager = sessionManager;
+        this.arenaManager = arenaManager;
         this.messages = messages;
     }
 
@@ -30,24 +37,31 @@ public final class VolleyMusicCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        GameSession session = resolveSession(sender);
+        if (session == null) {
+            messages.send(sender, "music.no-session");
+            return true;
+        }
+        MusicManager music = session.getMusic();
+
         switch (args[0].toLowerCase()) {
             case "start", "play" -> {
                 String song = args.length >= 2 ? args[1] : null;
-                boolean ok = song == null ? startDefault() : musicManager.start(song);
+                boolean ok = song == null ? startDefault(music) : music.start(song);
                 if (!ok) {
                     messages.send(sender, "music.start-failed");
                 } else {
-                    messages.send(sender, "music.now-playing");
+                    messages.send(sender, "music.now-playing", "arena", session.getArena().getName());
                 }
             }
             case "stop" -> {
-                musicManager.stop();
-                messages.send(sender, "music.stopped");
+                music.stop();
+                messages.send(sender, "music.stopped", "arena", session.getArena().getName());
             }
             case "list" -> {
-                File[] files = musicManager.getFolder().listFiles((dir, name) -> name.toLowerCase().endsWith(".nbs"));
+                File[] files = music.getFolder().listFiles((dir, name) -> name.toLowerCase().endsWith(".nbs"));
                 if (files == null || files.length == 0) {
-                    messages.send(sender, "music.no-files", "path", musicManager.getFolder().getPath());
+                    messages.send(sender, "music.no-files", "path", music.getFolder().getPath());
                     return true;
                 }
                 messages.send(sender, "music.songs");
@@ -56,7 +70,7 @@ public final class VolleyMusicCommand implements CommandExecutor, TabCompleter {
                 }
             }
             case "reload" -> {
-                musicManager.loadConfig();
+                music.loadConfig();
                 messages.send(sender, "music.reloaded");
             }
             default -> messages.send(sender, "music.usage");
@@ -64,9 +78,27 @@ public final class VolleyMusicCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    private boolean startDefault() {
-        musicManager.startDefault();
-        return musicManager.isPlaying();
+    private boolean startDefault(MusicManager music) {
+        music.startDefault();
+        return music.isPlaying();
+    }
+
+    private @Nullable GameSession resolveSession(CommandSender sender) {
+        if (sender instanceof Player player) {
+            GameSession session = sessionManager.get(player);
+            if (session != null) {
+                return session;
+            }
+            Arena arena = arenaManager.arenaAt(player.getLocation());
+            if (arena != null) {
+                session = sessionManager.get(arena);
+                if (session != null) {
+                    return session;
+                }
+            }
+        }
+        Arena arena = arenaManager.getDefault();
+        return arena != null ? sessionManager.getOrCreate(arena) : null;
     }
 
     @Override
@@ -81,7 +113,12 @@ public final class VolleyMusicCommand implements CommandExecutor, TabCompleter {
             return options;
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("start") || args[0].equalsIgnoreCase("play"))) {
-            File[] files = musicManager.getFolder().listFiles((dir, name) -> name.toLowerCase().endsWith(".nbs"));
+            GameSession session = resolveSession(sender);
+            if (session == null) {
+                return List.of();
+            }
+            File[] files = session.getMusic().getFolder()
+                    .listFiles((dir, name) -> name.toLowerCase().endsWith(".nbs"));
             if (files == null) {
                 return List.of();
             }

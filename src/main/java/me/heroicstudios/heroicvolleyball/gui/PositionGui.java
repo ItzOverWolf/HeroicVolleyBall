@@ -3,8 +3,9 @@ package me.heroicstudios.heroicvolleyball.gui;
 import java.util.ArrayList;
 import java.util.List;
 
-import me.heroicstudios.heroicvolleyball.arena.Team;
-import me.heroicstudios.heroicvolleyball.position.PositionManager;
+import me.heroicstudios.heroicvolleyball.arena.Arena;
+import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
+import me.heroicstudios.heroicvolleyball.arena.Side;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -20,29 +21,32 @@ import org.jetbrains.annotations.NotNull;
 
 public final class PositionGui implements InventoryHolder {
 
-    private final Team team;
+    private final Side side;
     private final Location target;
-    private final PositionManager positionManager;
+    private final Arena arena;
+    private final ArenaManager arenaManager;
     private final Inventory inventory;
 
-    public PositionGui(Team team, Location target, PositionManager positionManager) {
-        this.team = team;
+    public PositionGui(Side side, Location target, Arena arena, ArenaManager arenaManager) {
+        this.side = side;
         this.target = target;
-        this.positionManager = positionManager;
+        this.arena = arena;
+        this.arenaManager = arenaManager;
         this.inventory = Bukkit.createInventory(this, PositionLayout.SIZE,
-                Component.text("Set " + team.getDisplayName() + " position"));
+                Component.text("Set " + side.getDisplayName() + " position"));
         PositionLayout.fillFrame(inventory);
         fillPositions();
     }
 
     private void fillPositions() {
-        Material material = team == Team.RED ? Material.RED_STAINED_GLASS_PANE : Material.BLUE_STAINED_GLASS_PANE;
+        Material material = side.getPane();
         for (int position = 1; position <= 6; position++) {
             String row = (position >= 2 && position <= 4) ? "Front row" : "Back row";
             List<Component> lore = new ArrayList<>();
+            lore.add(line("Arena: " + arena.getName(), NamedTextColor.WHITE));
             lore.add(line(row, NamedTextColor.AQUA));
 
-            Location existing = positionManager != null ? positionManager.getPosition(team, position) : null;
+            Location existing = arena.getPosition(side, position);
             if (existing != null) {
                 lore.add(line("Currently at " + existing.getBlockX() + ", " + existing.getBlockY() + ", "
                         + existing.getBlockZ(), NamedTextColor.GRAY));
@@ -52,7 +56,7 @@ public final class PositionGui implements InventoryHolder {
             lore.add(line("Click to set here", NamedTextColor.GREEN));
 
             inventory.setItem(PositionLayout.slot(position),
-                    item(material, "Position " + position, team.getColor(), lore));
+                    item(material, "Position " + position, side.getColor(), lore));
         }
     }
 
@@ -71,12 +75,20 @@ public final class PositionGui implements InventoryHolder {
         return Component.text(text, color).decoration(TextDecoration.ITALIC, false);
     }
 
-    public Team getTeam() {
-        return team;
+    public Side getSide() {
+        return side;
     }
 
     public Location getTarget() {
         return target;
+    }
+
+    public Arena getArena() {
+        return arena;
+    }
+
+    public ArenaManager getArenaManager() {
+        return arenaManager;
     }
 
     public void open(Player player) {

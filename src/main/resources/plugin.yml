@@ -13,31 +13,31 @@ commands:
     permission: heroicvolleyball.volleywand
   setarena:
     description: Sets the selected region as a team's arena
-    usage: /setarena <red|blue>
+    usage: /setarena <red|blue> [direction] [arena]
     permission: heroicvolleyball.setarena
   setbackrow:
     description: Sets the selected region as a team's back row
-    usage: /setbackrow <red|blue>
+    usage: /setbackrow <red|blue> [arena]
     permission: heroicvolleyball.setbackrow
   setballspawnpoint:
     description: Saves where the ball should serve from for a team, or clears it
-    usage: /setballspawnpoint <red|blue> [clear]
+    usage: /setballspawnpoint <red|blue> [clear] [arena]
     permission: heroicvolleyball.setballspawnpoint
   spawnball:
     description: Spawns the volleyball at your location
-    usage: /spawnball
+    usage: /spawnball [arena]
     permission: heroicvolleyball.spawnball
   startgame:
     description: Spawns the volleyball near Position 6 to start a game
-    usage: /startgame
+    usage: /startgame [arena]
     permission: heroicvolleyball.startgame
   stopgame:
     description: Stops the current game, removing the ball and music and resetting the score
-    usage: /stopgame
+    usage: /stopgame [arena]
     permission: heroicvolleyball.stopgame
   restartgame:
     description: Restarts the game, resetting the score and respawning the ball
-    usage: /restartgame
+    usage: /restartgame [arena]
     permission: heroicvolleyball.restartgame
   volleygive:
     description: Gives a volleyball tool
@@ -47,6 +47,10 @@ commands:
     description: Reloads the HeroicVolleyBall configuration
     usage: /volleyreload
     permission: heroicvolleyball.volleyreload
+  volleyarena:
+    description: Creates, lists, inspects, enables or deletes arenas
+    usage: /volleyarena <create|delete|list|info|enable|disable> [name]
+    permission: heroicvolleyball.volleyarena
   volleymusic:
     description: Plays Note Block Studio music for the game
     usage: /volleymusic <start|stop|list|reload> [song]
@@ -98,6 +102,9 @@ permissions:
     default: op
   heroicvolleyball.volleyreload:
     description: Allows use of /volleyreload
+    default: op
+  heroicvolleyball.volleyarena:
+    description: Allows use of /volleyarena
     default: op
   heroicvolleyball.volleymusic:
     description: Allows use of /volleymusic

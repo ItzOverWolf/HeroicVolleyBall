@@ -1,10 +1,10 @@
 package me.heroicstudios.heroicvolleyball.gui;
 
-import me.heroicstudios.heroicvolleyball.arena.Team;
+import me.heroicstudios.heroicvolleyball.arena.Arena;
+import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
+import me.heroicstudios.heroicvolleyball.arena.Side;
 import me.heroicstudios.heroicvolleyball.message.Messages;
-import me.heroicstudios.heroicvolleyball.position.PositionManager;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
@@ -13,14 +13,15 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
+import org.jetbrains.annotations.Nullable;
 
 public final class GuiListener implements Listener {
 
-    private final PositionManager positionManager;
+    private final ArenaManager arenaManager;
     private final Messages messages;
 
-    public GuiListener(PositionManager positionManager, Messages messages) {
-        this.positionManager = positionManager;
+    public GuiListener(ArenaManager arenaManager, Messages messages) {
+        this.arenaManager = arenaManager;
         this.messages = messages;
     }
 
@@ -40,13 +41,17 @@ public final class GuiListener implements Listener {
 
         if (holder instanceof TeamSelectGui teamSelect) {
             event.setCancelled(true);
-            if (slot == 11) {
-                new PositionGui(Team.RED, teamSelect.getTarget(), positionManager).open(player);
-                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.7f, 1.2f);
-            } else if (slot == 15) {
-                new PositionGui(Team.BLUE, teamSelect.getTarget(), positionManager).open(player);
-                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.7f, 1.2f);
+            Side side = sideAt(slot);
+            if (side == null) {
+                return;
             }
+            Arena arena = resolveArena(teamSelect.getTarget());
+            if (arena == null) {
+                messages.send(player, "arena.none");
+                return;
+            }
+            new PositionGui(side, teamSelect.getTarget(), arena, arenaManager).open(player);
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.7f, 1.2f);
             return;
         }
 
@@ -59,20 +64,39 @@ public final class GuiListener implements Listener {
             }
 
             Location target = positionGui.getTarget();
-            Team team = positionGui.getTeam();
-            positionManager.savePosition("default", team, positionNumber, target);
+            Side side = positionGui.getSide();
+            Arena arena = positionGui.getArena();
+            arena.setPosition(side, positionNumber, target);
+            arenaManager.save(arena);
 
             player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
             String row = (positionNumber >= 2 && positionNumber <= 4) ? "Front Row" : "Back Row";
-            String teamTag = Messages.teamDisplay(team);
+            String teamTag = Messages.teamDisplay(side);
             messages.actionBar(player, "gui.saved-actionbar",
-                    "position", String.valueOf(positionNumber), "row", row, "team", teamTag);
+                    "position", String.valueOf(positionNumber), "row", row, "team", teamTag,
+                    "arena", arena.getName());
             messages.send(player, "gui.saved-chat",
                     "position", String.valueOf(positionNumber),
                     "row", row,
                     "team", teamTag,
+                    "arena", arena.getName(),
                     "location", target.getBlockX() + ", " + target.getBlockY() + ", " + target.getBlockZ());
             player.closeInventory();
         }
+    }
+
+    private @Nullable Arena resolveArena(Location target) {
+        Arena arena = arenaManager.arenaAt(target);
+        return arena != null ? arena : arenaManager.getDefault();
+    }
+
+    private @Nullable Side sideAt(int slot) {
+        if (slot == 11) {
+            return Side.RED;
+        }
+        if (slot == 15) {
+            return Side.BLUE;
+        }
+        return null;
     }
 }

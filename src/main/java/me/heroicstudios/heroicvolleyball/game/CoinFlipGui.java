@@ -1,7 +1,7 @@
 package me.heroicstudios.heroicvolleyball.game;
 
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
-import me.heroicstudios.heroicvolleyball.arena.Team;
+import me.heroicstudios.heroicvolleyball.arena.Side;
 import me.heroicstudios.heroicvolleyball.message.Messages;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -48,6 +48,7 @@ public final class CoinFlipGui implements Listener {
 
     private final HeroicVolleyBall plugin;
     private final Messages messages;
+    private final GameSession session;
     private final Inventory inventory;
     private final Holder holder = new Holder();
     private final List<Player> viewers = new ArrayList<>();
@@ -55,9 +56,10 @@ public final class CoinFlipGui implements Listener {
     private boolean flipping;
     private int generation;
 
-    public CoinFlipGui(HeroicVolleyBall plugin, Messages messages) {
+    public CoinFlipGui(HeroicVolleyBall plugin, Messages messages, GameSession session) {
         this.plugin = plugin;
         this.messages = messages;
+        this.session = session;
         this.inventory = Bukkit.createInventory(holder, 27, Component.text("Coin Flip", NamedTextColor.GOLD));
         holder.inventory = inventory;
     }
@@ -66,7 +68,7 @@ public final class CoinFlipGui implements Listener {
         return flipping;
     }
 
-    public void flip(Collection<Player> players, Consumer<Team> onResult) {
+    public void flip(Collection<Player> players, Consumer<Side> onResult) {
         if (flipping) {
             return;
         }
@@ -75,9 +77,9 @@ public final class CoinFlipGui implements Listener {
         viewers.clear();
         viewers.addAll(players);
 
-        Team result = ThreadLocalRandom.current().nextBoolean() ? Team.RED : Team.BLUE;
+        Side result = ThreadLocalRandom.current().nextBoolean() ? Side.RED : Side.BLUE;
         fillFrame();
-        inventory.setItem(CENTER, wool(Material.RED_WOOL, NamedTextColor.RED));
+        inventory.setItem(CENTER, wool(Side.RED));
 
         for (Player player : viewers) {
             if (player != null && player.isOnline()) {
@@ -94,7 +96,7 @@ public final class CoinFlipGui implements Listener {
         closeViewers();
     }
 
-    private void animate(int frame, Team result, int gen, Consumer<Team> onResult) {
+    private void animate(int frame, Side result, int gen, Consumer<Side> onResult) {
         if (gen != generation) {
             return;
         }
@@ -116,14 +118,12 @@ public final class CoinFlipGui implements Listener {
         Bukkit.getScheduler().runTaskLater(plugin, () -> animate(frame + 1, result, gen, onResult), delay);
     }
 
-    private void reveal(Team result, int gen, Consumer<Team> onResult) {
+    private void reveal(Side result, int gen, Consumer<Side> onResult) {
         if (gen != generation) {
             return;
         }
 
-        Material material = result == Team.RED ? Material.RED_WOOL : Material.BLUE_WOOL;
-        NamedTextColor color = result == Team.RED ? NamedTextColor.RED : NamedTextColor.BLUE;
-        inventory.setItem(CENTER, wool(material, color));
+        inventory.setItem(CENTER, wool(result));
 
         Component title = messages.get("game.coin-flip-title");
         Component subtitle = messages.get("game.coin-flip-result", "team", Messages.teamDisplay(result));
@@ -133,7 +133,7 @@ public final class CoinFlipGui implements Listener {
                 player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.4f);
             }
         }
-        Bukkit.broadcast(messages.getPrefixed("game.coin-flip-broadcast", "team", Messages.teamDisplay(result)));
+        session.broadcast(messages.getPrefixed("game.coin-flip-broadcast", "team", Messages.teamDisplay(result)));
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (gen != generation) {
@@ -170,10 +170,10 @@ public final class CoinFlipGui implements Listener {
         return item;
     }
 
-    private ItemStack wool(Material material, NamedTextColor color) {
-        ItemStack item = new ItemStack(material);
+    private ItemStack wool(Side side) {
+        ItemStack item = new ItemStack(side.getWool());
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text("Serves first", color)
+        meta.displayName(Component.text("Serves first", side.getColor())
                 .decoration(TextDecoration.ITALIC, false)
                 .decoration(TextDecoration.BOLD, true));
         item.setItemMeta(meta);

@@ -4,17 +4,21 @@
 # startup and on /volleyreload - you never need to delete this file to get
 # them. Your own values are never overwritten.
 #
-# Court coordinates are NOT stored here. They live in their own files so they
-# survive config resets:
-#   - arenas.yml    -> the two team court regions (/setarena)
-#   - positions.yml -> position 1-6 spots + facing direction (/volleywand)
+# Court coordinates are NOT stored here. Every arena lives in its own file at
+# plugins/HeroicVolleyBall/arenas/<name>.yml, holding both court regions,
+# backrow regions, ball spawns, position 1-6 spots and facing directions, so a
+# finished setup can be copied between servers file by file. Use /volleyarena
+# to create, list, inspect, enable or delete arenas. Existing single-arena
+# installs (arenas.yml, positions.yml, backrow.yml, ballspawn.yml) are migrated
+# into arenas/default.yml automatically on first start.
 
 # Ball physics and rule settings. Reload live with /volleyreload.
 ball:
-  # Ball size in blocks. Scales BOTH the invisible slime hitbox and the
-  # visible player head (the head always matches the hitbox height), so the
-  # ball you see and the ball you hit are the same size. 5 = default.
-  size: 5
+  # Ball size in blocks (1 = small, 2 = default, ...). Scales BOTH the
+  # invisible click hitbox and the visible player head (the head always
+  # matches the hitbox height), so the ball you see and the ball you hit
+  # are the same size.
+  size: 1.5
   # Maximum number of touches a team gets per possession.
   max-touches: 3
   # Downward acceleration applied to the ball every tick (blocks/tick^2).
@@ -39,7 +43,7 @@ ball:
     up: 0.7
   # Fraction of the shovel's upward power added as forward drift (0 = straight
   # up, 0.25 = slightly forward in the direction you are facing).
-  shovel-forward: 0.25
+  shovel-forward: 0.15
   # Shield (Block) tool behaviour. The shield never uses a team touch.
   # - Left-click a ball at its middle or top to knock it forward and down.
   # - Hold right-click (shield raised) underneath the ball to catch it and pop
@@ -77,10 +81,17 @@ ball:
     # ball still counts when the ball has dropped since.
     swing-speed-tolerance: 1.0
   # Fraction of downward speed kept as a bounce when the ball lands (0 = none).
-  bounce: 0.3
+  bounce: 0.4
+  # Any landing bounce slower than this is treated as settled (speed 0), so the
+  # ball stops cleanly on the floor instead of creeping and jittering forever.
+  settle-threshold: 0.12
   # Ticks to wait after the ball lands before the point is reset to a serve.
   # A short delay lets the ball visibly settle instead of teleporting away.
   serve-reset-delay: 10
+  # Safety net (seconds) for a ball that never returns to play: launched out of
+  # bounds, or wedged and idle during a rally for longer than this. When it
+  # trips, the ball is reset to a serve for the side that last had it. 0 = off.
+  stuck-timeout: 30
   # If true, the floating name above the ball (Serve / touches) is shown.
   # When the ball is invisible, the name is carried by a hologram so it stays
   # visible to every player (vanilla hides name tags on invisible mobs).
@@ -105,16 +116,36 @@ ball:
   # base64 "textures" value from your skin (the part after the JSON value).
   # Leave empty to use a normal Steve/head texture for this material.
   texture: "eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvNDdkYWIwOGMyMTQ0NGVmMGRkZWU2OWJjMjYxYzFkNmQ5ZWZhMmU2MTE1Y2U1NzRkZTBlNTAyODAyZGMwMjJhNyJ9fX0="
+  # Client-side visual polish for the ball. All of these are cosmetic only -
+  # they never change the physics or the hitbox - and can be toggled live with
+  # /volleyreload.
+  visual:
+    # Spin the visible head about the axis it is travelling, so a rolling ball
+    # looks like a rolling ball.
+    spin: true
+    # Show a small ring of dark dust on the floor under the ball (its "shadow")
+    # so players can judge where it will land.
+    shadow: true
+    # Leave a short particle trail behind the ball while it is moving.
+    trail: true
+    # Speed (blocks/tick) above which the trail starts showing.
+    trail-speed: 0.6
+    # Make the visible head briefly swell when it is hit, so contacts feel
+    # physical.
+    hit-pulse: true
+    # Scale the volume and pitch of ball hit sounds with how hard the ball was
+    # struck - a soft bump and a full-power spike stop sounding identical.
+    scaled-hit-sound: true
   # Per-tier tool power.
   power:
     shovel:
-      wooden: 0.7
-      iron: 1.0
-      diamond: 1.2
-    spike:
       wooden: 0.6
-      iron: 0.9
-      diamond: 1.4
+      iron: 0.8
+      diamond: 1.1
+    spike:
+      wooden: 0.2
+      iron: 0.6
+      diamond: 1.0
 
 # Match rules.
 game:
@@ -131,7 +162,7 @@ game:
   effects:
     enabled: true
     jump-boost-level: 5
-    speed-level: 4
+    speed-level: 5
   # Show big on-screen titles when a point, set or match is won.
   titles: true
   # Announce points, sets and match wins in chat.
@@ -162,3 +193,18 @@ music:
   enabled: true
   song: haikyuu.nbs
   volume: 1.0
+
+# Arena selection. Each arena is a file in plugins/HeroicVolleyBall/arenas/.
+# This is the arena that commands and placeholders use when no arena name is
+# given, and it must exist in arenas/ to be selected.
+arena:
+  default: default
+
+# What happens to a player who leaves a running game.
+session:
+  # Save and restore a player's inventory/effects when they teleport to another
+  # world (for example a lobby portal).
+  restore-on-world-change: true
+  # Save and restore a player's inventory/effects when they walk out of the
+  # arena's court/backrow regions.
+  restore-on-leave: false

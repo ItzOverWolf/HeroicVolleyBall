@@ -1,12 +1,12 @@
 package me.heroicstudios.heroicvolleyball.game;
 
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
-import me.heroicstudios.heroicvolleyball.arena.Team;
+import me.heroicstudios.heroicvolleyball.arena.Arena;
+import me.heroicstudios.heroicvolleyball.arena.Side;
 import me.heroicstudios.heroicvolleyball.gui.PositionLayout;
 import me.heroicstudios.heroicvolleyball.message.Messages;
 import me.heroicstudios.heroicvolleyball.party.Party;
 import me.heroicstudios.heroicvolleyball.party.PartyManager;
-import me.heroicstudios.heroicvolleyball.position.PositionManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -36,15 +36,13 @@ import java.util.UUID;
 public final class SetupGui implements Listener {
 
     private final HeroicVolleyBall plugin;
-    private final GameManager gameManager;
+    private final SessionManager sessionManager;
     private final PartyManager partyManager;
-    private final PositionManager positionManager;
 
-    public SetupGui(HeroicVolleyBall plugin, GameManager gameManager, PartyManager partyManager, PositionManager positionManager) {
+    public SetupGui(HeroicVolleyBall plugin, SessionManager sessionManager, PartyManager partyManager) {
         this.plugin = plugin;
-        this.gameManager = gameManager;
+        this.sessionManager = sessionManager;
         this.partyManager = partyManager;
-        this.positionManager = positionManager;
     }
 
     public void open(Player leader) {
@@ -53,7 +51,17 @@ public final class SetupGui implements Listener {
             return;
         }
 
-        Setup setup = new Setup();
+        Arena arena = plugin.getArenaManager().resolve(leader.getLocation());
+        if (arena == null) {
+            plugin.getMessages().send(leader, "arena.not-in-arena");
+            return;
+        }
+        if (!arena.isComplete()) {
+            plugin.getMessages().send(leader, "arena.incomplete", "arena", arena.getName());
+            return;
+        }
+
+        Setup setup = new Setup(arena);
         for (UUID uuid : party.getMembers()) {
             setup.players.add(uuid);
         }
@@ -68,7 +76,16 @@ public final class SetupGui implements Listener {
     }
 
     public void openSolo(Player player) {
-        Holder holder = new Holder(null, Stage.SOLO, player.getUniqueId());
+        Arena arena = plugin.getArenaManager().resolve(player.getLocation());
+        if (arena == null) {
+            plugin.getMessages().send(player, "arena.not-in-arena");
+            return;
+        }
+        if (!arena.isComplete()) {
+            plugin.getMessages().send(player, "arena.incomplete", "arena", arena.getName());
+            return;
+        }
+        Holder holder = new Holder(new Setup(arena), Stage.SOLO, player.getUniqueId());
         Inventory inventory = Bukkit.createInventory(holder, PositionLayout.SIZE, Component.text("Choose your position"));
         holder.inventory = inventory;
         renderSolo(holder);
@@ -100,11 +117,11 @@ public final class SetupGui implements Listener {
         player.openInventory(inventory);
     }
 
-    private void openPositionMenu(Setup setup, Player player, Team team) {
+    private void openPositionMenu(Setup setup, Player player, Side side) {
         Holder holder = new Holder(setup, Stage.POSITION, player.getUniqueId());
         Inventory inventory = Bukkit.createInventory(holder, PositionLayout.SIZE, Component.text("Choose your position"));
         holder.inventory = inventory;
-        renderPosition(holder, team);
+        renderPosition(holder, side);
         player.openInventory(inventory);
     }
 
@@ -112,33 +129,32 @@ public final class SetupGui implements Listener {
         Inventory inventory = holder.inventory;
         PositionLayout.fillFrame(inventory);
         Setup setup = holder.setup;
-        inventory.setItem(11, teamItem(Team.RED, setup));
-        inventory.setItem(15, teamItem(Team.BLUE, setup));
+        inventory.setItem(11, teamItem(Side.RED, setup));
+        inventory.setItem(15, teamItem(Side.BLUE, setup));
         inventory.setItem(4, infoItem(setup));
     }
 
-    private void renderPosition(Holder holder, Team team) {
+    private void renderPosition(Holder holder, Side side) {
         Inventory inventory = holder.inventory;
         PositionLayout.fillFrame(inventory);
         Setup setup = holder.setup;
         for (int number = 1; number <= 6; number++) {
-            inventory.setItem(PositionLayout.slot(number), positionItem(setup, team, number));
+            inventory.setItem(PositionLayout.slot(number), positionItem(setup, side, number));
         }
         inventory.setItem(4, infoItem(setup));
     }
 
-    private ItemStack teamItem(Team team, Setup setup) {
-        Material material = team == Team.RED ? Material.RED_WOOL : Material.BLUE_WOOL;
-        ItemStack item = new ItemStack(material);
+    private ItemStack teamItem(Side side, Setup setup) {
+        ItemStack item = new ItemStack(side.getWool());
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text(team.getDisplayName() + " Team", team.getColor())
+        meta.displayName(Component.text(side.getDisplayName() + " Team", side.getColor())
                 .decoration(TextDecoration.ITALIC, false));
 
         List<Component> lore = new ArrayList<>();
         int count = 0;
-        for (Map.Entry<UUID, Team> entry : setup.teams.entrySet()) {
-            if (entry.getValue() == team) {
-                lore.add(loreLine(" - " + nameOf(entry.getKey()), team.getColor()));
+        for (Map.Entry<UUID, Side> entry : setup.teams.entrySet()) {
+            if (entry.getValue() == side) {
+                lore.add(loreLine(" - " + nameOf(entry.getKey()), side.getColor()));
                 count++;
             }
         }
@@ -151,15 +167,14 @@ public final class SetupGui implements Listener {
         return item;
     }
 
-    private ItemStack positionItem(Setup setup, Team team, int number) {
-        Material material = team == Team.RED ? Material.RED_WOOL : Material.BLUE_WOOL;
-        ItemStack item = new ItemStack(material);
+    private ItemStack positionItem(Setup setup, Side side, int number) {
+        ItemStack item = new ItemStack(side.getWool());
         ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text("Position " + number, team.getColor())
+        meta.displayName(Component.text("Position " + number, side.getColor())
                 .decoration(TextDecoration.ITALIC, false));
 
         List<Component> lore = new ArrayList<>();
-        Location location = positionManager.getPosition(team, number);
+        Location location = setup.arena.getPosition(side, number);
         if (location != null) {
             lore.add(loreLine("Set at " + location.getBlockX() + ", " + location.getBlockY() + ", "
                     + location.getBlockZ(), NamedTextColor.GRAY));
@@ -167,7 +182,7 @@ public final class SetupGui implements Listener {
             lore.add(loreLine("Not set yet", NamedTextColor.DARK_GRAY));
         }
 
-        UUID occupant = occupantOf(setup, team, number);
+        UUID occupant = occupantOf(setup, side, number);
         if (occupant != null) {
             lore.add(loreLine("Taken by " + nameOf(occupant), NamedTextColor.RED));
         } else {
@@ -185,6 +200,7 @@ public final class SetupGui implements Listener {
                 .decoration(TextDecoration.ITALIC, false));
 
         List<Component> lore = new ArrayList<>();
+        lore.add(loreLine("Arena: " + setup.arena.getName(), NamedTextColor.WHITE));
         lore.add(loreLine("Players: " + setup.players.size(), NamedTextColor.WHITE));
         lore.add(loreLine("Max per team: " + setup.maxPerTeam, NamedTextColor.GRAY));
         lore.add(loreLine("Pick a team, then a position.", NamedTextColor.GRAY));
@@ -197,9 +213,9 @@ public final class SetupGui implements Listener {
         return Component.text(text, color).decoration(TextDecoration.ITALIC, false);
     }
 
-    private @Nullable UUID occupantOf(Setup setup, Team team, int number) {
+    private @Nullable UUID occupantOf(Setup setup, Side side, int number) {
         for (Map.Entry<UUID, Integer> entry : setup.positions.entrySet()) {
-            if (entry.getValue() == number && setup.teams.get(entry.getKey()) == team) {
+            if (entry.getValue() == number && setup.teams.get(entry.getKey()) == side) {
                 return entry.getKey();
             }
         }
@@ -233,30 +249,30 @@ public final class SetupGui implements Listener {
                 return;
             }
             player.closeInventory();
-            gameManager.startSolo(player, number);
+            sessionManager.startSolo(holder.setup.arena, player, number);
             plugin.getMessages().send(player, "game.solo-started", "position", String.valueOf(number));
             return;
         }
 
         Setup setup = holder.setup;
         if (holder.stage == Stage.TEAM) {
-            Team team = teamAt(event.getSlot());
-            if (team == null) {
+            Side side = sideAt(event.getSlot());
+            if (side == null) {
                 return;
             }
             if (setup.teams.containsKey(player.getUniqueId())) {
                 return;
             }
-            if (countTeam(setup, team) >= setup.maxPerTeam) {
+            if (countTeam(setup, side) >= setup.maxPerTeam) {
                 plugin.getMessages().send(player, "game.team-full");
                 return;
             }
-            setup.teams.put(player.getUniqueId(), team);
+            setup.teams.put(player.getUniqueId(), side);
             refreshTeamMenus(setup);
-            openPositionMenu(setup, player, team);
+            openPositionMenu(setup, player, side);
         } else {
-            Team team = setup.teams.get(player.getUniqueId());
-            if (team == null) {
+            Side side = setup.teams.get(player.getUniqueId());
+            if (side == null) {
                 return;
             }
             if (setup.positions.containsKey(player.getUniqueId())) {
@@ -266,7 +282,7 @@ public final class SetupGui implements Listener {
             if (number < 1 || number > 6) {
                 return;
             }
-            if (occupantOf(setup, team, number) != null) {
+            if (occupantOf(setup, side, number) != null) {
                 plugin.getMessages().send(player, "game.position-taken");
                 return;
             }
@@ -296,14 +312,14 @@ public final class SetupGui implements Listener {
             return;
         }
         Setup setup = holder.setup;
-        Team team = setup.teams.get(player.getUniqueId());
-        if (team == null || setup.positions.containsKey(player.getUniqueId())) {
+        Side side = setup.teams.get(player.getUniqueId());
+        if (side == null || setup.positions.containsKey(player.getUniqueId())) {
             return;
         }
         if (setup.teams.size() != setup.players.size() || setup.positions.size() != setup.players.size()) {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (player.isOnline() && !setup.positions.containsKey(player.getUniqueId())) {
-                    openPositionMenu(setup, player, team);
+                    openPositionMenu(setup, player, side);
                 }
             });
         }
@@ -314,7 +330,7 @@ public final class SetupGui implements Listener {
             return;
         }
 
-        Map<UUID, Team> teams = new LinkedHashMap<>(setup.teams);
+        Map<UUID, Side> teams = new LinkedHashMap<>(setup.teams);
         Map<UUID, Integer> positions = new LinkedHashMap<>(setup.positions);
 
         for (UUID uuid : setup.players) {
@@ -324,18 +340,18 @@ public final class SetupGui implements Listener {
             }
         }
 
-        gameManager.start(teams, positions);
+        sessionManager.start(setup.arena, teams, positions);
 
         for (UUID uuid : setup.players) {
             Player player = Bukkit.getPlayer(uuid);
             if (player != null) {
                 plugin.getMessages().send(player, "game.assigned");
             }
-            Team team = teams.get(uuid);
-            if (team != null) {
+            Side side = teams.get(uuid);
+            if (side != null) {
                 Player p = Bukkit.getPlayer(uuid);
                 if (p != null) {
-                    String teamTag = Messages.teamDisplay(team);
+                    String teamTag = Messages.teamDisplay(side);
                     p.showTitle(Messages.noFade(
                             plugin.getMessages().get("game.assigned-title", "team", teamTag),
                             plugin.getMessages().get("game.assigned-subtitle", "team", teamTag)));
@@ -360,22 +376,22 @@ public final class SetupGui implements Listener {
         }
     }
 
-    private int countTeam(Setup setup, Team team) {
+    private int countTeam(Setup setup, Side side) {
         int count = 0;
-        for (Team value : setup.teams.values()) {
-            if (value == team) {
+        for (Side value : setup.teams.values()) {
+            if (value == side) {
                 count++;
             }
         }
         return count;
     }
 
-    private @Nullable Team teamAt(int slot) {
+    private @Nullable Side sideAt(int slot) {
         if (slot == 11) {
-            return Team.RED;
+            return Side.RED;
         }
         if (slot == 15) {
-            return Team.BLUE;
+            return Side.BLUE;
         }
         return null;
     }
@@ -387,10 +403,15 @@ public final class SetupGui implements Listener {
     }
 
     private static final class Setup {
+        private final Arena arena;
         private final Set<UUID> players = new java.util.LinkedHashSet<>();
-        private final Map<UUID, Team> teams = new LinkedHashMap<>();
+        private final Map<UUID, Side> teams = new LinkedHashMap<>();
         private final Map<UUID, Integer> positions = new LinkedHashMap<>();
         private int maxPerTeam = 1;
+
+        private Setup(Arena arena) {
+            this.arena = arena;
+        }
     }
 
     private static final class Holder implements InventoryHolder {

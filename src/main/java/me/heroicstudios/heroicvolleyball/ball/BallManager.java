@@ -1,6 +1,5 @@
 package me.heroicstudios.heroicvolleyball.ball;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -9,12 +8,11 @@ import com.destroystokyo.paper.profile.PlayerProfile;
 import com.destroystokyo.paper.profile.ProfileProperty;
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
 import me.heroicstudios.heroicvolleyball.arena.Arena;
-import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
-import me.heroicstudios.heroicvolleyball.arena.Team;
+import me.heroicstudios.heroicvolleyball.arena.Region;
+import me.heroicstudios.heroicvolleyball.arena.Side;
 import me.heroicstudios.heroicvolleyball.game.Countdown;
-import me.heroicstudios.heroicvolleyball.game.GameManager;
+import me.heroicstudios.heroicvolleyball.game.GameSession;
 import me.heroicstudios.heroicvolleyball.message.Messages;
-import me.heroicstudios.heroicvolleyball.position.PositionManager;
 import me.heroicstudios.heroicvolleyball.score.ScoreManager;
 import me.heroicstudios.heroicvolleyball.tool.ToolManager;
 import me.heroicstudios.heroicvolleyball.tool.VolleyTier;
@@ -27,6 +25,7 @@ import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
@@ -34,16 +33,12 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Slime;
-import org.bukkit.entity.SulfurCube;
 import org.bukkit.entity.TextDisplay;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.Damageable;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
@@ -59,12 +54,16 @@ public final class BallManager {
 
     private static final double COLLISION_STEP = 0.1;
 
-    /**
-     * Only used to recognise sulfur cube ghosts saved to disk by older builds
-     * of this plugin during the startup sweep - the ball itself never uses the
-     * cube anymore.
-     */
-    private static final boolean SULFUR_CUBE_SUPPORTED = classExists("org.bukkit.entity.SulfurCube");
+    /** Below this speed a grounded ball is treated as at rest and its physics are skipped. */
+    private static final double REST_EPSILON = 1.0E-4;
+
+    /** Ticks the ball visually pulses after a hit. */
+    private static final int HIT_PULSE_TICKS = 4;
+
+    private static final double TWO_PI = Math.PI * 2.0;
+
+    /** How far down the shadow particle ring looks for the floor. */
+    private static final double SHADOW_RAY_LENGTH = 12.0;
 
     /**
      * Rendered height of a player head in an ItemDisplay at scale 1 (the head
@@ -73,28 +72,19 @@ public final class BallManager {
      */
     private static final double HEAD_BASE_SIZE = 0.5;
 
-    private static boolean classExists(String name) {
-        try {
-            Class.forName(name, false, BallManager.class.getClassLoader());
-            return true;
-        } catch (ClassNotFoundException | LinkageError e) {
-            return false;
-        }
-    }
-
     private enum State {
         IDLE,
         RALLY
     }
 
     private final HeroicVolleyBall plugin;
-    private final ArenaManager arenaManager;
+    private final GameSession session;
+    private final Arena arena;
     private final ScoreManager scoreManager;
-    private final GameManager gameManager;
     private final ToolManager toolManager;
     private final NamespacedKey ballKey;
 
-    private @Nullable LivingEntity ball;
+    private @Nullable Entity ball;
     private @Nullable ItemDisplay ballDisplay;
     private @Nullable TextDisplay ballNameDisplay;
     private @Nullable Location current;
@@ -122,7 +112,6 @@ public final class BallManager {
     private boolean swingFallback = true;
     private double swingReachBuffer = 0.5;
     private double swingSpeedTolerance = 1.0;
-    private final Map<UUID, ItemStack> brokenShields = new HashMap<>();
     private double bounceFactor = 0.3;
     private double settleThreshold = 0.12;
     private int serveResetDelay = 10;
@@ -147,18 +136,33 @@ public final class BallManager {
     private boolean wasOnGround = true;
     private boolean awaitingServe;
     private boolean placed;
-    private @Nullable Team pickupTeam;
+    private @Nullable Side pickupTeam;
     private @Nullable UUID pickupHolder;
-    private @Nullable Team possession;
-    private @Nullable Team lastHitter;
+    private @Nullable Side possession;
+    private @Nullable Side lastHitter;
     private int lastHitTick = -100;
 
-    public BallManager(HeroicVolleyBall plugin, ArenaManager arenaManager, ScoreManager scoreManager,
-            GameManager gameManager, ToolManager toolManager) {
+    private int stuckTimeoutTicks = 30 * 20;
+    private int outOfBoundsTicks;
+    private int idleRallyTicks;
+    private boolean spinEnabled = true;
+    private boolean shadowEnabled = true;
+    private boolean trailEnabled = true;
+    private double trailSpeed = 0.6;
+    private boolean hitPulseEnabled = true;
+    private boolean scaledHitSound = true;
+    private float spinAngle;
+    private int pulseTicks;
+    private float appliedSpinAngle = Float.NaN;
+    private int appliedPulse = -1;
+    private @Nullable Component lastNameText;
+    private @Nullable Location lastNamePos;
+
+    public BallManager(HeroicVolleyBall plugin, GameSession session, ToolManager toolManager) {
         this.plugin = plugin;
-        this.arenaManager = arenaManager;
-        this.scoreManager = scoreManager;
-        this.gameManager = gameManager;
+        this.session = session;
+        this.arena = session.getArena();
+        this.scoreManager = session.getScore();
         this.toolManager = toolManager;
         this.ballKey = new NamespacedKey(plugin, "ball");
         loadConfig();
@@ -187,6 +191,14 @@ public final class BallManager {
         this.swingReachBuffer = config.getDouble("ball.hit.swing-reach-buffer", 0.5);
         this.swingSpeedTolerance = Math.max(0.0, config.getDouble("ball.hit.swing-speed-tolerance", 1.0));
         this.bounceFactor = config.getDouble("ball.bounce", 0.3);
+        this.settleThreshold = config.getDouble("ball.settle-threshold", 0.12);
+        this.stuckTimeoutTicks = Math.max(0, config.getInt("ball.stuck-timeout", 30)) * 20;
+        this.spinEnabled = config.getBoolean("ball.visual.spin", true);
+        this.shadowEnabled = config.getBoolean("ball.visual.shadow", true);
+        this.trailEnabled = config.getBoolean("ball.visual.trail", true);
+        this.trailSpeed = Math.max(0.0, config.getDouble("ball.visual.trail-speed", 0.6));
+        this.hitPulseEnabled = config.getBoolean("ball.visual.hit-pulse", true);
+        this.scaledHitSound = config.getBoolean("ball.visual.scaled-hit-sound", true);
         this.serveResetDelay = Math.max(0, config.getInt("ball.serve-reset-delay", 10));
         this.pointCountdown = Math.max(0, config.getInt("game.point-countdown", 3));
         this.touchPenalty = config.getBoolean("game.opponent-touch-penalty", true);
@@ -204,11 +216,13 @@ public final class BallManager {
         this.spikeDiamond = config.getDouble("ball.power.spike.diamond", 1.8);
 
         this.touches = Math.min(maxTouches, touches);
+        lastNameText = null;
+        lastNamePos = null;
         applyBallAppearance();
         updateName();
     }
 
-    public @Nullable LivingEntity getBall() {
+    public @Nullable Entity getBall() {
         return ball;
     }
 
@@ -220,7 +234,7 @@ public final class BallManager {
         return maxTouches;
     }
 
-    public @Nullable Team getPossession() {
+    public @Nullable Side getPossession() {
         return possession;
     }
 
@@ -229,14 +243,7 @@ public final class BallManager {
     }
 
     public boolean isBall(@Nullable Entity entity) {
-        if (entity == null) {
-            return false;
-        }
-        if (ball != null && entity.getUniqueId().equals(ball.getUniqueId())) {
-            return true;
-        }
-        // Old clients attack the ItemDisplay twin (they cannot see the cube).
-        return ballDisplay != null && entity.getUniqueId().equals(ballDisplay.getUniqueId());
+        return entity != null && ball != null && entity.getUniqueId().equals(ball.getUniqueId());
     }
 
     public boolean canPickupBall() {
@@ -259,12 +266,12 @@ public final class BallManager {
         if (!canPickupBall()) {
             return false;
         }
-        Team team = possession;
-        if (team == null && ball != null && ball.isValid()) {
-            team = arenaManager.getArenaAt(ball.getLocation());
+        Side side = possession;
+        if (side == null && ball != null && ball.isValid()) {
+            side = arena.getCourtSide(ball.getLocation());
         }
-        if (team != null && plugin.getBackrowManager() != null) {
-            Arena backrow = plugin.getBackrowManager().getBackrow(team);
+        if (side != null) {
+            Region backrow = arena.getBackrow(side);
             if (backrow != null && !backrow.contains(player.getLocation())) {
                 plugin.getMessages().actionBar(player, "ball.pickup-backrow");
                 return false;
@@ -288,7 +295,7 @@ public final class BallManager {
 
         removeBall();
 
-        java.util.Map<Integer, ItemStack> leftover = player.getInventory().addItem(item);
+        Map<Integer, ItemStack> leftover = player.getInventory().addItem(item);
         if (!leftover.isEmpty()) {
             player.getWorld().dropItemNaturally(player.getLocation(), leftover.get(0));
         }
@@ -304,7 +311,7 @@ public final class BallManager {
         if (pickupTeam == null) {
             return false;
         }
-        Arena region = placementRegion(pickupTeam);
+        Region region = placementRegion(pickupTeam);
         if (region == null || !region.contains(clicked.getLocation())) {
             plugin.getMessages().actionBar(player, "ball.place-outside");
             return false;
@@ -325,21 +332,19 @@ public final class BallManager {
         return true;
     }
 
-    private @Nullable Arena placementRegion(Team team) {
-        if (plugin.getBackrowManager() != null) {
-            Arena backrow = plugin.getBackrowManager().getBackrow(team);
-            if (backrow != null) {
-                return backrow;
-            }
+    private @Nullable Region placementRegion(Side side) {
+        Region backrow = arena.getBackrow(side);
+        if (backrow != null) {
+            return backrow;
         }
-        return arenaManager.getArena(team);
+        return arena.getCourt(side);
     }
 
     public void spawnAtPlayer(Player player) {
         Location spawn = null;
-        Team team = arenaManager.getArenaAt(player.getLocation());
-        if (team != null && plugin.getBallSpawnManager() != null) {
-            spawn = plugin.getBallSpawnManager().get(team);
+        Side side = arena.getCourtSide(player.getLocation());
+        if (side != null) {
+            spawn = arena.getBallSpawn(side);
         }
         if (spawn == null) {
             spawn = player.getLocation().add(0.0, 0.5, 0.0);
@@ -351,26 +356,23 @@ public final class BallManager {
         return spawnAtStartTeam() != null;
     }
 
-    public @Nullable Team spawnAtStartTeam() {
-        if (resetToServe(Team.RED)) {
-            return Team.RED;
+    public @Nullable Side spawnAtStartTeam() {
+        if (resetToServe(Side.RED)) {
+            return Side.RED;
         }
-        if (resetToServe(Team.BLUE)) {
-            return Team.BLUE;
+        if (resetToServe(Side.BLUE)) {
+            return Side.BLUE;
         }
         return null;
     }
 
-    public boolean resetToServe(Team team) {
-        Location base = null;
-        if (plugin.getBallSpawnManager() != null && plugin.getBallSpawnManager().isSet(team)) {
-            base = plugin.getBallSpawnManager().get(team);
-        }
-        if (base == null && plugin.getPositionManager() != null) {
-            base = plugin.getPositionManager().getPosition(team, 6);
+    public boolean resetToServe(Side side) {
+        Location base = arena.getBallSpawn(side);
+        if (base == null) {
+            base = arena.getPosition(side, 6);
         }
         if (base == null) {
-            base = arenaCenterFloor(team);
+            base = arena.centerFloor(side);
         }
         if (base == null) {
             return false;
@@ -392,27 +394,6 @@ public final class BallManager {
         return true;
     }
 
-    private @Nullable Location arenaCenterFloor(Team team) {
-        Arena arena = arenaManager.getArena(team);
-        if (arena == null) {
-            return null;
-        }
-        World world = Bukkit.getWorld(arena.getWorld());
-        if (world == null) {
-            return null;
-        }
-        int x = (arena.getMinX() + arena.getMaxX()) / 2;
-        int z = (arena.getMinZ() + arena.getMaxZ()) / 2;
-        int floorY = arena.getMinY();
-        for (int y = arena.getMaxY(); y >= arena.getMinY() - 1; y--) {
-            if (!world.getBlockAt(x, y, z).isPassable()) {
-                floorY = y + 1;
-                break;
-            }
-        }
-        return new Location(world, x + 0.5, floorY, z + 0.5);
-    }
-
     public void spawnBall(Location location) {
         removeBall();
         takeBackHeldBall();
@@ -422,37 +403,38 @@ public final class BallManager {
             return;
         }
 
-        // The ball is an invisible slime used purely as the physics/click
-        // hitbox - it resizes with ball.size, exists on every supported
-        // version, and can never render wrong because it never renders at all.
+        // The ball is an Interaction entity: a click-only hitbox with no
+        // rendered model, no AI and no physics of its own. Its width/height
+        // resize with ball.size and its box matches the physics AABB used by
+        // collides() exactly (bottom on the ball's y, horizontally centred).
         // The floating player head ItemDisplay above it is the ball everyone
         // sees on every client version.
-        this.ball = world.spawn(location, Slime.class, CreatureSpawnEvent.SpawnReason.CUSTOM, slime -> {
-            slime.setSize(Math.max(1, size));
-            slime.setAware(false);
-            slime.setAI(false);
-            slime.setGravity(false);
+        this.ball = world.spawn(location, Interaction.class, CreatureSpawnEvent.SpawnReason.CUSTOM, interaction -> {
+            interaction.setInteractionWidth((float) (ballRadius() * 2.0));
+            interaction.setInteractionHeight((float) ballHeight());
+            // Swinging at the ball plays the normal arm-swing feedback.
+            interaction.setResponsive(true);
             // Non-persistent: never written to the world save, so a crash
             // or force-stop can never leave a ghost ball behind.
-            slime.setPersistent(false);
-            slime.setSilent(true);
-            slime.setMaximumNoDamageTicks(0);
-            slime.setNoDamageTicks(0);
-            slime.setInvisible(true);
-            slime.getPersistentDataContainer().set(ballKey, PersistentDataType.BOOLEAN, true);
+            interaction.setPersistent(false);
+            interaction.getPersistentDataContainer().set(ballKey, PersistentDataType.BOOLEAN, true);
         });
 
         this.current = location.clone();
         this.motion = new Vector();
         this.state = State.IDLE;
         this.touches = maxTouches;
-        this.wasOnGround = true;
+        this.wasOnGround = false;
         this.awaitingServe = false;
         this.placed = false;
         this.pickupTeam = null;
         this.pickupHolder = null;
         this.lastHitTick = -100;
-        this.possession = arenaManager.getArenaAt(location);
+        this.spinAngle = 0.0f;
+        this.pulseTicks = 0;
+        this.outOfBoundsTicks = 0;
+        this.idleRallyTicks = 0;
+        this.possession = arena.getCourtSide(location);
         this.lastHitter = null;
         resetShieldCooldown();
         applyBallAppearance();
@@ -460,11 +442,17 @@ public final class BallManager {
         startTask();
     }
 
-    private void takeBackHeldBall() {
-        if (pickupHolder == null) {
-            return;
-        }
-        Player holder = Bukkit.getPlayer(pickupHolder);
+    public void takeBackHeldBall() {
+        Player holder = pickupHolder != null ? Bukkit.getPlayer(pickupHolder) : null;
+        takeBackHeldBall(holder);
+    }
+
+    /**
+     * Removes any picked-up ball item from the given player's inventory and
+     * forgets the held ball. Used when the holder quits or dies so the ball
+     * item can never be kept across a session or dropped on death.
+     */
+    public void takeBackHeldBall(@Nullable Player holder) {
         if (holder != null) {
             ItemStack[] contents = holder.getInventory().getContents();
             for (int i = 0; i < contents.length; i++) {
@@ -489,10 +477,10 @@ public final class BallManager {
             return;
         }
 
-        Team playerTeam = resolveTeam(player);
+        Side playerTeam = resolveTeam(player);
 
-        Team ballSide = possession;
-        boolean penaltyActive = touchPenalty && gameManager != null && gameManager.isActive();
+        Side ballSide = possession;
+        boolean penaltyActive = touchPenalty && session.isActive();
         if (penaltyActive && ballSide != null && playerTeam != null && ballSide != playerTeam) {
             lastHitTick = now;
             if (scorePoint(ballSide)) {
@@ -504,7 +492,8 @@ public final class BallManager {
             return;
         }
 
-        if (tool == VolleyTool.SHIELD && shieldCooldownTicks > 0) {
+        if (tool == VolleyTool.SHIELD
+                && (shieldCooldownTicks > 0 || player.hasCooldown(Material.SHIELD))) {
             plugin.getMessages().actionBar(player, "ball.shield-cooldown");
             return;
         }
@@ -588,14 +577,12 @@ public final class BallManager {
         return Math.max(3.0, range) + swingReachBuffer;
     }
 
-    private Team resolveTeam(Player player) {
-        if (gameManager != null) {
-            Team team = gameManager.getTeam(player);
-            if (team != null) {
-                return team;
-            }
+    private @Nullable Side resolveTeam(Player player) {
+        Side side = session.getSide(player);
+        if (side != null) {
+            return side;
         }
-        return arenaManager.getArenaAt(player.getLocation());
+        return arena.getCourtSide(player.getLocation());
     }
 
     private Vector horizontalDirection(Player player) {
@@ -628,11 +615,10 @@ public final class BallManager {
         double horizontal = power * shovelForward;
         motion = new Vector(forward.getX() * horizontal, power, forward.getZ() * horizontal);
         wasOnGround = false;
+        pulseTicks = HIT_PULSE_TICKS;
         updateName();
 
-        if (current != null) {
-            current.getWorld().playSound(current, Sound.BLOCK_WOOL_PLACE, 1.0f, 1.2f);
-        }
+        playHitSound(current, Sound.BLOCK_WOOL_PLACE, 1.0f, 1.2f);
         plugin.getMessages().actionBar(player, "ball.bump");
     }
 
@@ -670,9 +656,10 @@ public final class BallManager {
 
         motion = velocity;
         wasOnGround = false;
+        pulseTicks = HIT_PULSE_TICKS;
         updateName();
 
-        current.getWorld().playSound(current, Sound.BLOCK_WOOL_BREAK, 1.0f, 0.9f);
+        playHitSound(current, Sound.BLOCK_WOOL_BREAK, 1.0f, 0.9f);
         plugin.getMessages().actionBar(player, "ball.spike");
     }
 
@@ -682,17 +669,57 @@ public final class BallManager {
             return;
         }
 
+        World world = current.getWorld();
+        if (world == null) {
+            cleanup();
+            return;
+        }
+        // Freeze the whole simulation while the ball's chunk is unloaded so we
+        // never touch or generate blocks and never teleport in the dark.
+        if (!world.isChunkLoaded(current.getBlockX() >> 4, current.getBlockZ() >> 4)) {
+            return;
+        }
+
         if (shieldCooldownTicks > 0) {
             shieldCooldownTicks--;
-            updateBrokenShields();
-            if (shieldCooldownTicks <= 0) {
-                restoreBrokenShields();
-            }
         }
+
         tryShieldCatch();
-        integrate();
-        updatePossession();
-        step();
+
+        // A grounded ball that has settled needs no integration or block
+        // scans; only wake it back up when something moves it (a hit resets
+        // wasOnGround/motion) or a new possession change is pending.
+        if (!resting()) {
+            integrate();
+            updatePossession();
+            step();
+        }
+
+        if (stuckTimeoutTicks > 0) {
+            if (arena.getCourtSide(current) == null) {
+                outOfBoundsTicks++;
+            } else {
+                outOfBoundsTicks = 0;
+            }
+            if (state == State.RALLY && resting()) {
+                idleRallyTicks++;
+            } else {
+                idleRallyTicks = 0;
+            }
+            if (outOfBoundsTicks > stuckTimeoutTicks) {
+                failsafeReset("out of bounds");
+                return;
+            }
+            if (idleRallyTicks > stuckTimeoutTicks) {
+                failsafeReset("idle during rally");
+                return;
+            }
+        } else {
+            outOfBoundsTicks = 0;
+            idleRallyTicks = 0;
+        }
+
+        updateVisuals();
         updateName();
     }
 
@@ -739,7 +766,7 @@ public final class BallManager {
             motion.setZ(motion.getZ() * 0.5);
 
             if (state == State.RALLY && !wasOnGround) {
-                Team scorer = resolveScorer();
+                Side scorer = resolveScorer();
                 if (!scorePoint(scorer)) {
                     resetRally();
                 }
@@ -792,6 +819,115 @@ public final class BallManager {
         return collides(world, below);
     }
 
+    private boolean resting() {
+        return wasOnGround && motion.lengthSquared() < REST_EPSILON;
+    }
+
+    /**
+     * Advances the purely cosmetic ball state (spin, hit pulse) and the
+     * client-side particles each tick. Runs even while the ball is resting so
+     * a hit pulse still decays and the display transform stays correct.
+     */
+    private void updateVisuals() {
+        if (spinEnabled) {
+            double speed = motion.length();
+            if (speed > 1.0E-4) {
+                spinAngle = (float) ((spinAngle + speed * 0.5) % TWO_PI);
+            }
+        }
+        if (pulseTicks > 0) {
+            pulseTicks--;
+        }
+        if (ballDisplay != null && ballDisplay.isValid()
+                && (spinAngle != appliedSpinAngle || pulseTicks != appliedPulse)) {
+            ballDisplay.setTransformation(headTransformation());
+            appliedSpinAngle = spinAngle;
+            appliedPulse = pulseTicks;
+        }
+        spawnShadow();
+        spawnTrail();
+    }
+
+    /**
+     * A small ring of dark dust on the floor under the ball so players can tell
+     * where it will land, found by tracing straight down from the ball.
+     */
+    private void spawnShadow() {
+        if (!shadowEnabled || current == null) {
+            return;
+        }
+        World world = current.getWorld();
+        if (world == null) {
+            return;
+        }
+        RayTraceResult hit = world.rayTraceBlocks(current, new Vector(0.0, -1.0, 0.0),
+                SHADOW_RAY_LENGTH, FluidCollisionMode.NEVER, true);
+        if (hit == null || hit.getHitPosition() == null) {
+            return;
+        }
+        Vector ground = hit.getHitPosition();
+        double radius = ballRadius();
+        Particle.DustOptions dust = new Particle.DustOptions(Color.fromRGB(25, 25, 30),
+                (float) Math.max(0.4, radius));
+        for (int i = 0; i < 10; i++) {
+            double angle = TWO_PI / 10.0 * i;
+            world.spawnParticle(Particle.DUST,
+                    ground.getX() + Math.cos(angle) * radius,
+                    ground.getY() + 0.05,
+                    ground.getZ() + Math.sin(angle) * radius,
+                    1, 0.0, 0.0, 0.0, 0.0, dust);
+        }
+    }
+
+    private void spawnTrail() {
+        if (!trailEnabled || current == null || motion.length() < trailSpeed) {
+            return;
+        }
+        World world = current.getWorld();
+        if (world == null) {
+            return;
+        }
+        Location center = displayLocation();
+        if (center == null) {
+            return;
+        }
+        world.spawnParticle(Particle.END_ROD, center, 1, 0.0, 0.0, 0.0, 0.0);
+    }
+
+    /**
+     * Plays a hit sound whose volume and pitch scale with how hard the ball was
+     * struck, so a soft bump and a full-power spike do not sound identical.
+     */
+    private void playHitSound(@Nullable Location at, Sound sound, float volume, float pitch) {
+        if (at == null || at.getWorld() == null) {
+            return;
+        }
+        float vol = volume;
+        float pit = pitch;
+        if (scaledHitSound) {
+            double norm = Math.min(1.0, motion.length() / Math.max(0.001, maxVelocity));
+            vol = (float) (volume * (0.6 + 0.5 * norm));
+            pit = (float) (pitch * (0.85 + 0.45 * norm));
+        }
+        at.getWorld().playSound(at, sound, vol, pit);
+    }
+
+    /**
+     * Last-resort recovery when the ball never returns to play (launched out of
+     * bounds or wedged during a rally). Hands the serve to the side that last
+     * had the ball so the game keeps going.
+     */
+    private void failsafeReset(String reason) {
+        Side team = possession != null ? possession : (lastHitter != null ? lastHitter : Side.RED);
+        outOfBoundsTicks = 0;
+        idleRallyTicks = 0;
+        plugin.getLogger().warning("Volleyball ball was stuck (" + reason + ") - resetting the serve.");
+        resetRally();
+        if (resetToServe(team) && session.isActive()) {
+            session.teleportToPositions(team);
+        }
+    }
+
     private double ballRadius() {
         return 0.45 * (size / 2.0);
     }
@@ -817,8 +953,15 @@ public final class BallManager {
         int z0 = (int) Math.floor(minZ);
         int z1 = (int) Math.floor(maxZ);
 
-        if (!world.isChunkLoaded(x0 >> 4, z0 >> 4) || !world.isChunkLoaded(x1 >> 4, z1 >> 4)) {
-            return false;
+        // Never touch blocks in an unloaded chunk - getBlockAt would generate
+        // them. A ball straddling a chunk border is treated as free until its
+        // neighbours finish loading.
+        for (int cx = x0 >> 4; cx <= x1 >> 4; cx++) {
+            for (int cz = z0 >> 4; cz <= z1 >> 4; cz++) {
+                if (!world.isChunkLoaded(cx, cz)) {
+                    return false;
+                }
+            }
         }
 
         for (int x = x0; x <= x1; x++) {
@@ -839,12 +982,11 @@ public final class BallManager {
         motion.setZ(forward.getZ() * shieldForward * velocityScale);
         motion.setY(-shieldDeflect * velocityScale);
         wasOnGround = false;
+        pulseTicks = HIT_PULSE_TICKS;
         startShieldCooldown(player);
         updateName();
 
-        if (current != null) {
-            current.getWorld().playSound(current, Sound.BLOCK_WOOL_BREAK, 1.0f, 0.9f);
-        }
+        playHitSound(current, Sound.BLOCK_WOOL_BREAK, 1.0f, 0.9f);
         plugin.getMessages().actionBar(player, "ball.shield-block");
     }
 
@@ -857,8 +999,16 @@ public final class BallManager {
         if (ball == null || !ball.isValid() || current == null || awaitingServe || shieldCooldownTicks > 0) {
             return;
         }
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            if (!player.isBlocking()) {
+        World world = current.getWorld();
+        if (world == null) {
+            return;
+        }
+        // Only players close enough to reach the ball can catch it.
+        for (Player player : world.getNearbyPlayers(current, shieldCatchReach + 1.0)) {
+            if (!session.contains(player)) {
+                continue;
+            }
+            if (!player.isBlocking() || player.hasCooldown(Material.SHIELD)) {
                 continue;
             }
             ItemStack main = player.getInventory().getItemInMainHand();
@@ -887,15 +1037,14 @@ public final class BallManager {
         motion.setZ(motion.getZ() * 0.3);
         motion.setY(shieldCatchPower * velocityScale);
         wasOnGround = false;
+        pulseTicks = HIT_PULSE_TICKS;
         if (state == State.IDLE) {
             state = State.RALLY;
         }
         startShieldCooldown(player);
         updateName();
 
-        if (current != null) {
-            current.getWorld().playSound(current, Sound.BLOCK_WOOL_BREAK, 1.0f, 1.3f);
-        }
+        playHitSound(current, Sound.BLOCK_WOOL_BREAK, 1.0f, 1.3f);
         plugin.getMessages().actionBar(player, "ball.shield-catch");
     }
 
@@ -906,71 +1055,28 @@ public final class BallManager {
         }
         shieldCooldownTicks = shieldCooldown;
         if (player != null) {
+            // Native shield-disable animation/cooldown: the client greys the
+            // shield out until it recharges, exactly like a vanilla axe hit.
+            player.setCooldown(Material.SHIELD, shieldCooldown);
             player.getWorld().playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK, 1.0f, 1.0f);
-            breakShield(player);
         }
-    }
-
-    private void updateBrokenShields() {
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            if (brokenShields.containsKey(player.getUniqueId())) {
-                continue;
-            }
-            breakShield(player);
-        }
-    }
-
-    private void breakShield(Player player) {
-        if (brokenShields.containsKey(player.getUniqueId())) {
-            return;
-        }
-        ItemStack item = player.getInventory().getItemInMainHand();
-        if (toolManager.getTool(item) != VolleyTool.SHIELD) {
-            return;
-        }
-        brokenShields.put(player.getUniqueId(), item.clone());
-        player.getInventory().setItemInMainHand(crackedShield(item));
-    }
-
-    private ItemStack crackedShield(ItemStack item) {
-        ItemStack cracked = item.clone();
-        ItemMeta meta = cracked.getItemMeta();
-        if (meta instanceof Damageable damageable) {
-            damageable.setUnbreakable(false);
-            damageable.setDamage(Math.max(0, cracked.getType().getMaxDurability() - 2));
-        }
-        cracked.setItemMeta(meta);
-        return cracked;
-    }
-
-    private void restoreBrokenShields() {
-        for (Map.Entry<UUID, ItemStack> entry : brokenShields.entrySet()) {
-            Player player = Bukkit.getPlayer(entry.getKey());
-            if (player == null) {
-                continue;
-            }
-            ItemStack original = entry.getValue();
-            ItemStack[] contents = player.getInventory().getContents();
-            for (int i = 0; i < contents.length; i++) {
-                if (contents[i] != null && toolManager.getTool(contents[i]) == VolleyTool.SHIELD) {
-                    player.getInventory().setItem(i, original.clone());
-                }
-            }
-        }
-        brokenShields.clear();
     }
 
     private void resetShieldCooldown() {
         shieldCooldownTicks = 0;
-        restoreBrokenShields();
+        for (Player player : session.players()) {
+            if (player.hasCooldown(Material.SHIELD)) {
+                player.setCooldown(Material.SHIELD, 0);
+            }
+        }
     }
 
     private void updatePossession() {
-        Team currentTeam = arenaManager.getArenaAt(current);
-        if (currentTeam == possession) {
+        Side currentSide = arena.getCourtSide(current);
+        if (currentSide == possession) {
             return;
         }
-        possession = currentTeam;
+        possession = currentSide;
         touches = maxTouches;
         applyBallAppearance();
     }
@@ -980,10 +1086,8 @@ public final class BallManager {
             return;
         }
 
-        // The slime underneath is always an invisible physics hitbox; the
-        // floating head display is the ball everyone sees on every client
-        // version - there is no per-client visibility handling anymore.
-        ball.setInvisible(true);
+        // The Interaction hitbox is never rendered; the floating head display
+        // is the ball everyone sees on every client version.
         showDisplay(ballItem(tintedBallMaterial()));
     }
 
@@ -1017,12 +1121,28 @@ public final class BallManager {
     /**
      * Scales the player head so its rendered height equals the physics ball
      * height - this is what makes ball.size affect the visible ball, not just
-     * the invisible hitbox.
+     * the invisible hitbox - and applies the current spin/hit-pulse rotation.
      */
     private Transformation headTransformation() {
         float scale = (float) (ballHeight() / HEAD_BASE_SIZE);
-        return new Transformation(new Vector3f(), new Quaternionf(),
-                new Vector3f(scale, scale, scale), new Quaternionf());
+        float pulse = hitPulseEnabled ? hitPulseScale() : 1.0f;
+        float s = scale * pulse;
+        Quaternionf rotation = new Quaternionf();
+        if (spinEnabled) {
+            double horizontal = Math.hypot(motion.getX(), motion.getZ());
+            if (horizontal > 1.0E-4) {
+                // Roll about the axis perpendicular to the horizontal travel
+                // direction so the head turns the way it is moving.
+                Vector3f axis = new Vector3f((float) motion.getZ(), 0.0f, (float) -motion.getX()).normalize();
+                rotation.rotationAxis(spinAngle, axis);
+            }
+        }
+        return new Transformation(new Vector3f(), rotation,
+                new Vector3f(s, s, s), new Quaternionf());
+    }
+
+    private float hitPulseScale() {
+        return 1.0f + 0.15f * pulseTicks / HIT_PULSE_TICKS;
     }
 
     private void showDisplay(ItemStack item) {
@@ -1032,6 +1152,8 @@ public final class BallManager {
         if (ballDisplay != null && ballDisplay.isValid()) {
             ballDisplay.setItemStack(item);
             ballDisplay.setTransformation(headTransformation());
+            appliedSpinAngle = spinAngle;
+            appliedPulse = pulseTicks;
             return;
         }
         Location spawnAt = displayLocation();
@@ -1047,12 +1169,13 @@ public final class BallManager {
                     display.setSilent(true);
                     display.setBillboard(Display.Billboard.FIXED);
                     display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
-                    display.setCustomNameVisible(false);
                     display.getPersistentDataContainer().set(ballKey, PersistentDataType.BOOLEAN, true);
                     display.setTransformation(headTransformation());
-                    // Glide over one tick so the twin tracks the ball smoothly.
+                    // Glide over one tick so the visible head tracks the ball smoothly.
                     display.setTeleportDuration(1);
                 });
+        appliedSpinAngle = spinAngle;
+        appliedPulse = pulseTicks;
     }
 
     private void removeDisplay() {
@@ -1060,6 +1183,8 @@ public final class BallManager {
             ballDisplay.remove();
             ballDisplay = null;
         }
+        appliedSpinAngle = Float.NaN;
+        appliedPulse = -1;
     }
 
     private ItemStack ballItem(Material material) {
@@ -1092,18 +1217,18 @@ public final class BallManager {
         placed = false;
     }
 
-    private @Nullable Team resolveScorer() {
+    private @Nullable Side resolveScorer() {
         if (lastHitter == null) {
             return null;
         }
 
-        Team landingTeam = arenaManager.getArenaAt(current);
-        boolean landedOnOpponent = landingTeam != null && landingTeam != lastHitter;
+        Side landingSide = arena.getCourtSide(current);
+        boolean landedOnOpponent = landingSide != null && landingSide != lastHitter;
         return landedOnOpponent ? lastHitter : lastHitter.opposite();
     }
 
-    private boolean scorePoint(@Nullable Team scorer) {
-        if (scorer == null || awaitingServe || scoreManager == null) {
+    private boolean scorePoint(@Nullable Side scorer) {
+        if (scorer == null || awaitingServe) {
             return false;
         }
         awaitingServe = true;
@@ -1115,7 +1240,7 @@ public final class BallManager {
         return true;
     }
 
-    private void scheduleServeReset(Team team) {
+    private void scheduleServeReset(Side team) {
         if (serveResetDelay <= 0) {
             beginServeCountdown(team);
         } else {
@@ -1123,23 +1248,22 @@ public final class BallManager {
         }
     }
 
-    private void beginServeCountdown(Team team) {
+    private void beginServeCountdown(Side team) {
         if (pointCountdown <= 0) {
             performServeReset(team);
             return;
         }
-        Countdown.run(plugin, pointCountdown, "game.point-countdown-title", "game.point-countdown-subtitle",
+        Countdown.run(plugin, pointCountdown, session.players(),
+                "game.point-countdown-title", "game.point-countdown-subtitle",
                 () -> performServeReset(team), "team", Messages.teamDisplay(team));
     }
 
-    private void performServeReset(Team team) {
+    private void performServeReset(Side team) {
         if (state == State.RALLY) {
             return;
         }
         resetToServe(team);
-        if (gameManager != null) {
-            gameManager.teleportToPositions(team);
-        }
+        session.teleportToPositions(team);
     }
 
     private void clamp(Vector vector) {
@@ -1164,7 +1288,6 @@ public final class BallManager {
         }
 
         if (!showName) {
-            ball.setCustomNameVisible(false);
             removeNameDisplay();
             return;
         }
@@ -1181,10 +1304,8 @@ public final class BallManager {
                     "max", String.valueOf(maxTouches));
         }
 
-        // The ball mob is always invisible and clients never render a name tag
-        // on an invisible entity, so the name always floats on the TextDisplay
-        // hologram - it shows for every player on every version.
-        ball.setCustomNameVisible(false);
+        // The name always floats on the TextDisplay hologram so it shows for
+        // every player on every client version.
         showNameDisplay(name);
     }
 
@@ -1205,8 +1326,16 @@ public final class BallManager {
             if (!nameBackground.equals(appliedNameBackground)) {
                 applyNameBackground(ballNameDisplay);
             }
-            ballNameDisplay.text(name);
-            ballNameDisplay.teleport(location);
+            // Only push a packet when something actually changed - a resting
+            // ball otherwise re-sends text/position every single tick.
+            if (lastNameText == null || !lastNameText.equals(name)) {
+                ballNameDisplay.text(name);
+                lastNameText = name;
+            }
+            if (lastNamePos == null || !lastNamePos.equals(location)) {
+                ballNameDisplay.teleport(location);
+                lastNamePos = location.clone();
+            }
             return;
         }
         removeNameDisplay();
@@ -1227,8 +1356,9 @@ public final class BallManager {
                     // matching how it interpolates the ball entity itself.
                     // 0 would snap to the raw server position and look laggy.
                     display.setTeleportDuration(1);
-                    display.setCustomNameVisible(false);
                 });
+        lastNameText = name;
+        lastNamePos = location.clone();
     }
 
     private void applyNameBackground(TextDisplay display) {
@@ -1275,6 +1405,8 @@ public final class BallManager {
             ballNameDisplay = null;
         }
         appliedNameBackground = null;
+        lastNameText = null;
+        lastNamePos = null;
     }
 
     private double shovelPower(VolleyTier tier) {
@@ -1310,19 +1442,17 @@ public final class BallManager {
         }
         current = null;
         motion = new Vector();
+        pulseTicks = 0;
+        outOfBoundsTicks = 0;
+        idleRallyTicks = 0;
     }
 
     private void cleanup() {
-        removeDisplay();
-        removeNameDisplay();
-        resetShieldCooldown();
-        ball = null;
-        current = null;
-        motion = new Vector();
         if (task != null) {
             task.cancel();
             task = null;
         }
+        removeBall();
     }
 
     public void shutdown() {
@@ -1330,53 +1460,6 @@ public final class BallManager {
             task.cancel();
             task = null;
         }
-        removeDisplay();
-        removeNameDisplay();
-        resetShieldCooldown();
-        if (ball != null) {
-            ball.remove();
-            ball = null;
-        }
-        current = null;
-        motion = new Vector();
-    }
-
-    /**
-     * Removes leftover ball entities from the world on startup. Ball entities
-     * are non-persistent now so they can never be saved again, but ghosts
-     * written to disk by older builds (force-stops before onDisable ran) still
-     * need to be swept: tagged entities first, then the legacy signature of an
-     * AI-disabled invisible/named ball mob.
-     */
-    public void purgeGhosts() {
-        int removed = 0;
-        for (World world : Bukkit.getWorlds()) {
-            for (Entity entity : world.getEntities()) {
-                if (isGhostBall(entity)) {
-                    entity.remove();
-                    removed++;
-                }
-            }
-        }
-        if (removed > 0) {
-            plugin.getLogger().info("Removed " + removed + " leftover volleyball ball entity(ies) from the world.");
-        }
-    }
-
-    boolean isGhostBall(Entity entity) {
-        if (ball != null && entity.getUniqueId().equals(ball.getUniqueId())) {
-            return false;
-        }
-        if (entity.getPersistentDataContainer().has(ballKey, PersistentDataType.BOOLEAN)) {
-            return true;
-        }
-        // Signature of ghosts saved by builds before ball entities were tagged
-        // and made non-persistent: a ball mob with AI switched off that is
-        // either invisible or carried the touch counter as its custom name.
-        if (!(entity instanceof Slime) && !(SULFUR_CUBE_SUPPORTED && entity instanceof SulfurCube)) {
-            return false;
-        }
-        Mob mob = (Mob) entity;
-        return !mob.isAware() && (mob.isInvisible() || mob.customName() != null);
+        removeBall();
     }
 }

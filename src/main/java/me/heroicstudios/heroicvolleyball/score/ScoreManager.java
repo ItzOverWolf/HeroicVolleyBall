@@ -1,12 +1,10 @@
 package me.heroicstudios.heroicvolleyball.score;
 
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
-import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
-import me.heroicstudios.heroicvolleyball.arena.Team;
+import me.heroicstudios.heroicvolleyball.arena.Side;
 import me.heroicstudios.heroicvolleyball.game.Countdown;
-import me.heroicstudios.heroicvolleyball.game.GameManager;
+import me.heroicstudios.heroicvolleyball.game.GameSession;
 import me.heroicstudios.heroicvolleyball.message.Messages;
-import me.heroicstudios.heroicvolleyball.music.MusicManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
@@ -14,24 +12,18 @@ import io.papermc.paper.scoreboard.numbers.NumberFormat;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.scoreboard.Criteria;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Score;
 import org.bukkit.scoreboard.Scoreboard;
 
-import java.util.ArrayList;
 import java.util.List;
 
-public final class ScoreManager implements Listener {
+public final class ScoreManager {
 
     private final HeroicVolleyBall plugin;
-    private final ArenaManager arenaManager;
-    private final MusicManager musicManager;
-    private GameManager gameManager;
+    private final GameSession session;
 
     private int pointsPerSet = 25;
     private int setsToWin = 2;
@@ -54,16 +46,11 @@ public final class ScoreManager implements Listener {
     private Score redLine;
     private Score blueLine;
 
-    public ScoreManager(HeroicVolleyBall plugin, ArenaManager arenaManager, MusicManager musicManager) {
+    public ScoreManager(HeroicVolleyBall plugin, GameSession session) {
         this.plugin = plugin;
-        this.arenaManager = arenaManager;
-        this.musicManager = musicManager;
+        this.session = session;
         loadConfig();
         setupBoard();
-    }
-
-    public void setGameManager(GameManager gameManager) {
-        this.gameManager = gameManager;
     }
 
     public int getRedPoints() {
@@ -121,8 +108,8 @@ public final class ScoreManager implements Listener {
 
     public void redraw() {
         scoreLine.customName(Component.text("Score: " + redPoints + " - " + bluePoints, NamedTextColor.WHITE));
-        redLine.customName(Component.text("Red: " + redSets, Team.RED.getColor()));
-        blueLine.customName(Component.text("Blue: " + blueSets, Team.BLUE.getColor()));
+        redLine.customName(Component.text("Red: " + redSets, Side.RED.getColor()));
+        blueLine.customName(Component.text("Blue: " + blueSets, Side.BLUE.getColor()));
     }
 
     public void apply(Player player) {
@@ -133,29 +120,29 @@ public final class ScoreManager implements Listener {
     }
 
     public void applyAll() {
-        for (Player player : Bukkit.getOnlinePlayers()) {
+        for (Player player : session.players()) {
             apply(player);
         }
     }
 
-    public void addPoint(Team team) {
+    public void addPoint(Side side) {
         if (matchOver || roundTransition) {
             return;
         }
 
-        if (team == Team.RED) {
+        if (side == Side.RED) {
             redPoints++;
         } else {
             bluePoints++;
         }
 
         Messages messages = plugin.getMessages();
-        String teamTag = Messages.teamDisplay(team);
+        String teamTag = Messages.teamDisplay(side);
         String red = String.valueOf(redPoints);
         String blue = String.valueOf(bluePoints);
 
         if (broadcastPoints) {
-            Bukkit.broadcast(messages.get("score.point", "team", teamTag, "red", red, "blue", blue));
+            session.broadcast(messages.get("score.point", "team", teamTag, "red", red, "blue", blue));
         }
         if (showTitles) {
             showTitle(
@@ -163,20 +150,22 @@ public final class ScoreManager implements Listener {
                     messages.get("score.point-subtitle", "team", teamTag, "red", red, "blue", blue));
         }
 
-        playTeamSound(team, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
-        playTeamSound(team.opposite(), Sound.ENTITY_WITHER_SPAWN, 1.0f, 1.0f);
+        playTeamSound(side, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
+        playTeamSound(side.opposite(), Sound.ENTITY_WITHER_SPAWN, 1.0f, 1.0f);
 
-        checkSet(team);
-        redraw();
+        checkSet(side);
+        if (!matchOver) {
+            redraw();
+        }
     }
 
-    private void checkSet(Team team) {
-        int points = team == Team.RED ? redPoints : bluePoints;
+    private void checkSet(Side side) {
+        int points = side == Side.RED ? redPoints : bluePoints;
         if (points < pointsPerSet) {
             return;
         }
 
-        if (team == Team.RED) {
+        if (side == Side.RED) {
             redSets++;
         } else {
             blueSets++;
@@ -185,12 +174,12 @@ public final class ScoreManager implements Listener {
         bluePoints = 0;
 
         Messages messages = plugin.getMessages();
-        String teamTag = Messages.teamDisplay(team);
+        String teamTag = Messages.teamDisplay(side);
         String redSetsText = String.valueOf(redSets);
         String blueSetsText = String.valueOf(blueSets);
 
         if (broadcastPoints) {
-            Bukkit.broadcast(messages.get("score.set", "team", teamTag,
+            session.broadcast(messages.get("score.set", "team", teamTag,
                     "red_sets", redSetsText, "blue_sets", blueSetsText));
         }
         if (showTitles) {
@@ -201,41 +190,39 @@ public final class ScoreManager implements Listener {
                             "red_sets", redSetsText, "blue_sets", blueSetsText));
         }
 
-        playTeamSound(team, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
-        playTeamSound(team.opposite(), Sound.ENTITY_WITHER_DEATH, 1.0f, 1.0f);
+        playTeamSound(side, Sound.UI_TOAST_CHALLENGE_COMPLETE, 1.0f, 1.0f);
+        playTeamSound(side.opposite(), Sound.ENTITY_WITHER_DEATH, 1.0f, 1.0f);
 
-        int sets = team == Team.RED ? redSets : blueSets;
+        int sets = side == Side.RED ? redSets : blueSets;
         if (sets >= setsToWin) {
             matchOver = true;
-            if (musicManager != null) {
-                musicManager.stop();
-            }
+            session.getMusic().stop();
             if (broadcastPoints) {
-                Bukkit.broadcast(messages.get("score.win", "team", teamTag));
+                session.broadcast(messages.get("score.win", "team", teamTag));
             }
             if (showTitles) {
                 showTitle(
                         messages.get("score.win-title", "team", teamTag),
                         messages.get("score.win-subtitle", "team", teamTag));
             }
-            playTeamSound(team, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
-            if (gameManager != null) {
-                gameManager.pauseBall();
-                gameManager.end();
-            }
+            playTeamSound(side, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+            session.pauseBall();
+            GameSession target = session;
+            Bukkit.getScheduler().runTask(plugin, () -> target.getManager().stop(target));
         } else {
-            startRoundBreak(team);
+            startRoundBreak(side);
         }
     }
 
-    private void startRoundBreak(Team nextServer) {
+    private void startRoundBreak(Side nextServer) {
         roundTransition = true;
         int token = ++roundToken;
         int nextRound = redSets + blueSets + 1;
-        if (roundCountdown > 0 && gameManager != null) {
-            gameManager.pauseBall();
+        if (roundCountdown > 0) {
+            session.pauseBall();
         }
-        Countdown.run(plugin, roundCountdown, "game.round-countdown-title", "game.round-countdown-subtitle",
+        Countdown.run(plugin, roundCountdown, session.players(),
+                "game.round-countdown-title", "game.round-countdown-subtitle",
                 () -> {
                     if (token != roundToken) {
                         return;
@@ -243,41 +230,26 @@ public final class ScoreManager implements Listener {
                     roundTransition = false;
                     Messages messages = plugin.getMessages();
                     if (broadcastPoints) {
-                        Bukkit.broadcast(messages.get("game.round-start",
+                        session.broadcast(messages.get("game.round-start",
                                 "round", String.valueOf(nextRound),
                                 "team", Messages.teamDisplay(nextServer)));
                     }
-                    if (gameManager != null) {
-                        gameManager.startNextRound(nextServer);
-                    }
+                    session.startNextRound(nextServer);
                 },
                 "round", String.valueOf(nextRound));
     }
 
     private void showTitle(Component title, Component subtitle) {
         Title display = Messages.noFade(title, subtitle);
-        for (Player player : Bukkit.getOnlinePlayers()) {
+        for (Player player : session.players()) {
             player.showTitle(display);
         }
     }
 
-    private void playTeamSound(Team team, Sound sound, float volume, float pitch) {
-        for (Player player : playersOf(team)) {
+    private void playTeamSound(Side side, Sound sound, float volume, float pitch) {
+        for (Player player : session.playersOf(side)) {
             player.playSound(player.getLocation(), sound, volume, pitch);
         }
-    }
-
-    private List<Player> playersOf(Team team) {
-        if (gameManager != null && gameManager.isActive()) {
-            return gameManager.playersOf(team);
-        }
-        List<Player> players = new ArrayList<>();
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            if (arenaManager.getArenaAt(player.getLocation()) == team) {
-                players.add(player);
-            }
-        }
-        return players;
     }
 
     public void resetMatch() {
@@ -293,19 +265,17 @@ public final class ScoreManager implements Listener {
     }
 
     public void shutdown() {
+        roundToken++;
         Scoreboard main = Bukkit.getScoreboardManager().getMainScoreboard();
-        for (Player player : Bukkit.getOnlinePlayers()) {
+        List<Player> players = session.players();
+        for (Player player : players) {
             if (player.getScoreboard() == board) {
                 player.setScoreboard(main);
             }
         }
         if (objective != null) {
             objective.unregister();
+            objective = null;
         }
-    }
-
-    @EventHandler
-    public void onJoin(PlayerJoinEvent event) {
-        apply(event.getPlayer());
     }
 }

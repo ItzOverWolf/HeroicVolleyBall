@@ -1,6 +1,7 @@
 package me.heroicstudios.heroicvolleyball.command;
 
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
+import me.heroicstudios.heroicvolleyball.game.GameSession;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -19,10 +20,15 @@ public final class VolleyReloadCommand implements CommandExecutor {
         plugin.reloadConfig();
         plugin.syncConfigDefaults();
         plugin.getMessages().reload();
-        plugin.getArenaManager().load();
-        plugin.getBallManager().loadConfig();
-        plugin.getScoreManager().loadConfig();
-        plugin.getScoreManager().applyAll();
+        plugin.getArenaManager().loadAll();
+
+        for (GameSession session : plugin.getSessionManager().sessions()) {
+            session.getBall().loadConfig();
+            session.getScore().loadConfig();
+            session.getScore().applyAll();
+            session.getMusic().loadConfig();
+        }
+
         plugin.getMessages().send(sender, "general.reloaded");
         return true;
     }

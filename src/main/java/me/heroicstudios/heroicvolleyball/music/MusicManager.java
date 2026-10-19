@@ -1,7 +1,9 @@
 package me.heroicstudios.heroicvolleyball.music;
 
 import java.io.File;
+import java.util.Collection;
 import java.util.List;
+import java.util.function.Supplier;
 
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
 import org.bukkit.Bukkit;
@@ -33,6 +35,7 @@ public final class MusicManager {
     };
 
     private final HeroicVolleyBall plugin;
+    private final Supplier<Collection<Player>> audience;
     private final File folder;
 
     private boolean enabled = true;
@@ -44,8 +47,9 @@ public final class MusicManager {
     private int currentTick;
     private double accumulator;
 
-    public MusicManager(HeroicVolleyBall plugin) {
+    public MusicManager(HeroicVolleyBall plugin, Supplier<Collection<Player>> audience) {
         this.plugin = plugin;
+        this.audience = audience;
         this.folder = new File(plugin.getDataFolder(), "music");
         if (!folder.exists() && folder.mkdirs()) {
             plugin.getLogger().info("Created music folder: " + folder.getPath());
@@ -142,8 +146,10 @@ public final class MusicManager {
             if (noteVolume <= 0.0f) {
                 continue;
             }
-            for (Player player : Bukkit.getOnlinePlayers()) {
-                player.playSound(player.getLocation(), sound, SoundCategory.RECORDS, noteVolume, pitch);
+            for (Player player : audience.get()) {
+                if (player.isOnline()) {
+                    player.playSound(player.getLocation(), sound, SoundCategory.RECORDS, noteVolume, pitch);
+                }
             }
         }
     }

@@ -3,8 +3,10 @@ package me.heroicstudios.heroicvolleyball.command;
 import java.util.ArrayList;
 import java.util.List;
 
-import me.heroicstudios.heroicvolleyball.arena.Team;
-import me.heroicstudios.heroicvolleyball.backrow.BackrowManager;
+import me.heroicstudios.heroicvolleyball.arena.Arena;
+import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
+import me.heroicstudios.heroicvolleyball.arena.Region;
+import me.heroicstudios.heroicvolleyball.arena.Side;
 import me.heroicstudios.heroicvolleyball.message.Messages;
 import me.heroicstudios.heroicvolleyball.wand.WandManager;
 import org.bukkit.Location;
@@ -18,12 +20,12 @@ import org.jetbrains.annotations.Nullable;
 
 public final class SetBackrowCommand implements CommandExecutor, TabCompleter {
 
-    private final BackrowManager backrowManager;
+    private final ArenaManager arenaManager;
     private final WandManager wandManager;
     private final Messages messages;
 
-    public SetBackrowCommand(BackrowManager backrowManager, WandManager wandManager, Messages messages) {
-        this.backrowManager = backrowManager;
+    public SetBackrowCommand(ArenaManager arenaManager, WandManager wandManager, Messages messages) {
+        this.arenaManager = arenaManager;
         this.wandManager = wandManager;
         this.messages = messages;
     }
@@ -35,14 +37,14 @@ public final class SetBackrowCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (args.length != 1) {
+        if (args.length < 1 || args.length > 2) {
             messages.send(player, "backrow.usage");
             messages.send(player, "arena.usage-hint");
             return true;
         }
 
-        Team team = Team.fromString(args[0]);
-        if (team == null) {
+        Side side = Side.fromString(args[0]);
+        if (side == null) {
             messages.send(player, "backrow.unknown-team", "input", args[0]);
             return true;
         }
@@ -60,13 +62,29 @@ public final class SetBackrowCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        backrowManager.setBackrow(team, first, second);
+        Arena arena = resolveArena(player, args.length == 2 ? args[1] : null);
+        if (arena == null) {
+            messages.send(player, "arena.none");
+            return true;
+        }
+
+        arena.setBackrow(side, Region.of(first, second));
+        arenaManager.save(arena);
 
         messages.send(player, "backrow.set",
-                "team", Messages.teamDisplay(team),
+                "team", Messages.teamDisplay(side),
+                "arena", arena.getName(),
                 "location", first.getBlockX() + ", " + first.getBlockY() + ", " + first.getBlockZ()
                         + " -> " + second.getBlockX() + ", " + second.getBlockY() + ", " + second.getBlockZ());
         return true;
+    }
+
+    private @Nullable Arena resolveArena(Player player, @Nullable String name) {
+        if (name != null && !name.isBlank()) {
+            return arenaManager.createIfMissing(name);
+        }
+        Arena arena = arenaManager.arenaAt(player.getLocation());
+        return arena != null ? arena : arenaManager.getDefault();
     }
 
     @Override
@@ -74,13 +92,16 @@ public final class SetBackrowCommand implements CommandExecutor, TabCompleter {
         if (args.length == 1) {
             List<String> options = new ArrayList<>();
             String prefix = args[0].toLowerCase();
-            for (Team team : Team.values()) {
-                String name = team.name().toLowerCase();
+            for (Side side : Side.values()) {
+                String name = side.getId();
                 if (name.startsWith(prefix)) {
                     options.add(name);
                 }
             }
             return options;
+        }
+        if (args.length == 2) {
+            return Filter.names(arenaManager.names(), args[1]);
         }
         return List.of();
     }

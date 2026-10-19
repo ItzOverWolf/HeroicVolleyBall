@@ -21,13 +21,14 @@ per team, and rally a sulfur-cube ball using shovels, swords and shields.
 | Command | Description | Permission |
 | --- | --- | --- |
 | `/volleywand` | Gives the selection wand (left-click point 1, right-click point 2, sneak + right-click to open the position menu). | `heroicvolleyball.volleywand` |
-| `/setarena <red\|blue> [direction]` | Sets the selected region as a team's arena and the direction that team faces. | `heroicvolleyball.setarena` |
-| `/setbackrow <red\|blue>` | Sets the selected region as a team's back row. The ball can only be picked up and placed there. | `heroicvolleyball.setbackrow` |
-| `/setballspawnpoint <red\|blue> [clear]` | Saves your current location as the team's ball spawn point (where the ball serves from). | `heroicvolleyball.setballspawnpoint` |
-| `/spawnball` | Spawns the volleyball, preferring the saved spawn point. | `heroicvolleyball.spawnball` |
-| `/startgame` | Players: opens the team/position picker. Console: serves the ball at Position 6. | `heroicvolleyball.startgame` |
-| `/stopgame` | Stops the game, removes the ball/music and resets the score. | `heroicvolleyball.stopgame` |
-| `/restartgame` | Resets the score and respawns the ball at Position 6. | `heroicvolleyball.restartgame` |
+| `/setarena <red\|blue> [direction] [arena]` | Sets the selected region as a team's court and the direction that team faces, in the named arena. | `heroicvolleyball.setarena` |
+| `/setbackrow <red\|blue> [arena]` | Sets the selected region as a team's back row. The ball can only be picked up and placed there. | `heroicvolleyball.setbackrow` |
+| `/setballspawnpoint <red\|blue> [clear] [arena]` | Saves your current location as the team's ball spawn point (where the ball serves from). | `heroicvolleyball.setballspawnpoint` |
+| `/spawnball [arena]` | Spawns the volleyball, preferring the saved spawn point. | `heroicvolleyball.spawnball` |
+| `/startgame [arena]` | Players: opens the team/position picker. Console: serves the ball at Position 6. | `heroicvolleyball.startgame` |
+| `/stopgame [arena]` | Stops the game, removes the ball/music and resets the score. | `heroicvolleyball.stopgame` |
+| `/restartgame [arena]` | Resets the score and respawns the ball at Position 6. | `heroicvolleyball.restartgame` |
+| `/volleyarena <create\|delete\|list\|info\|enable\|disable> [name]` | Manages arenas: create, inspect, toggle or delete a court setup. | `heroicvolleyball.volleyarena` |
 | `/volleygive <shovel\|sword\|shield> [wooden\|iron\|diamond]` | Gives a volleyball tool. | `heroicvolleyball.volleygive` |
 | `/volleymusic <start\|stop\|list\|reload> [song]` | Controls Note Block Studio music. | `heroicvolleyball.volleymusic` |
 | `/volleyreload` | Reloads `config.yml` and `messages.yml`. | `heroicvolleyball.volleyreload` |
@@ -38,24 +39,32 @@ per team, and rally a sulfur-cube ball using shovels, swords and shields.
 
 ### Setting up a court
 
-1. Give yourself the wand: `/volleywand`.
-2. Left-click one corner and right-click the opposite corner of a team's court half.
-3. Save it: `/setarena red` (add a direction, e.g. `/setarena red north`, or omit it
-   to face wherever you are looking). Repeat for `blue`.
-4. Sneak + right-click a block with the wand to open the menu, then pick the team and
+Each court is an **arena** stored in its own file (`arenas/<name>.yml`), so a
+finished setup can be copied between servers or run several at once. Commands that
+change a court accept an optional `[arena]` argument; when omitted they use the
+arena you are standing in, then the default arena (`arena.default`).
+
+1. Create the arena: `/volleyarena create main`.
+2. Give yourself the wand: `/volleywand`.
+3. Left-click one corner and right-click the opposite corner of a team's court half.
+4. Save it: `/setarena red main` (add a direction, e.g. `/setarena red north main`, or
+   omit the direction to face wherever you are looking). Repeat for `blue`.
+5. Sneak + right-click a block with the wand to open the menu, then pick the team and
    click the spot for each position `1`–`6`. Position `6` is the serve spot.
-5. Optional: select the back row of each team with the wand and save it with
+6. Optional: select the back row of each team with the wand and save it with
    `/setbackrow <red|blue>`. When a team has a back row set, its ball can only be
-   picked up and placed inside it (otherwise the whole arena is allowed).
-6. Optional: stand where each team's ball should serve from and run
+   picked up and placed inside it (otherwise the whole court is allowed).
+7. Optional: stand where each team's ball should serve from and run
    `/setballspawnpoint <red|blue>` (clear it with `[clear]`). `/spawnball` and serve
    placements prefer it.
-7. Run `/startgame`. Party members pick a team and position; the ball serves from
-   Position 6 and players are teleported into place.
+8. Check progress with `/volleyarena info main`, then run `/startgame main`. Party
+   members pick a team and position; the ball serves from Position 6 and players are
+   teleported into place.
 
-`/startgame` refuses to start until the setup is complete and lists whatever is
-missing: team arenas (`/setarena`), all six positions per team (wand menu) and the
-ball spawn point (`/setballspawnpoint`).
+`/startgame` refuses to start until the arena is complete and lists whatever is
+missing: team courts (`/setarena`), all six positions per team (wand menu) and the
+ball spawn point (`/setballspawnpoint`). Use `/volleyarena list` to see every arena
+and whether it is ready.
 
 ### Tools
 
@@ -88,8 +97,10 @@ Identifier: `hvb`
 | `%hvb_score%` | Points as `red - blue`. |
 | `%hvb_sets%` | Sets as `red - blue`. |
 | `%hvb_match_over%` | Whether the match has been won. |
-| `%hvb_active%` | Whether a party game is running. |
-| `%hvb_players%` | Number of players in the current game. |
+| `%hvb_active%` | Whether any arena has a game running. |
+| `%hvb_players%` | Number of players across all running games. |
+| `%hvb_sessions%` | Number of loaded arena sessions. |
+| `%hvb_arena%` | The requesting player's arena name, the default arena, or `None`. |
 | `%hvb_touches%` / `%hvb_max_touches%` | Current and maximum touches this possession. |
 | `%hvb_state%` | Ball state (`Idle`, `Rally`, ...). |
 | `%hvb_possession%` | Team that last touched the ball, or `None`. |
@@ -98,16 +109,18 @@ Identifier: `hvb`
 
 ## Configuration
 
-Your data is split across three files, so you can never lose your court by
-editing or regenerating a config:
+Your data is split so you can never lose a court by editing or regenerating a
+config:
 
 - `config.yml` – plugin settings only. New settings added in later versions are
   inserted into existing files automatically on startup and on `/volleyreload`
   (existing values are never overwritten), so you never need to delete it.
-- `arenas.yml` – the two court regions set with `/setarena`.
-- `positions.yml` – positions `1`–`6` per team plus the facing direction.
-- `backrow.yml` – the optional back-row regions set with `/setbackrow`.
-- `ballspawn.yml` – the ball spawn point set with `/setballspawnpoint`.
+- `arenas/<name>.yml` – one file per arena, holding its courts, back rows, ball
+  spawn points and positions `1`–`6` per team plus each team's facing direction.
+  Manage them with `/volleyarena`.
+- Older single-arena installs (`arenas.yml`, `positions.yml`, `backrow.yml`,
+  `ballspawn.yml`) are migrated into `arenas/default.yml` on first start and the
+  originals are renamed to `*.legacy`.
 
 `config.yml` highlights:
 
@@ -147,6 +160,9 @@ editing or regenerating a config:
 - `party.max-size` – maximum party size (must be even to start).
 - `tools.reach-bonus` – extra interaction range while a game is running.
 - `music.{enabled,song,volume}` – Note Block Studio track in `plugins/HeroicVolleyBall/music/`.
+- `arena.default` – the arena used by commands and placeholders when none is named.
+- `session.{restore-on-world-change,restore-on-leave}` – when to give a player back
+  the inventory and potion effects saved when they joined a game.
 
 `messages.yml` uses [MiniMessage](https://docs.advntr.dev/minimessage/format.html)
 formatting. Placeholders are written as `{name}` (for example `{team}`, `{position}`,

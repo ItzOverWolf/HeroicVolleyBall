@@ -1,9 +1,7 @@
 package me.heroicstudios.heroicvolleyball;
 
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
-import me.heroicstudios.heroicvolleyball.backrow.BackrowManager;
 import me.heroicstudios.heroicvolleyball.ball.BallListener;
-import me.heroicstudios.heroicvolleyball.ball.BallManager;
 import me.heroicstudios.heroicvolleyball.command.PartyCommand;
 import me.heroicstudios.heroicvolleyball.command.RestartGameCommand;
 import me.heroicstudios.heroicvolleyball.command.SetArenaCommand;
@@ -12,47 +10,36 @@ import me.heroicstudios.heroicvolleyball.command.SetBallSpawnCommand;
 import me.heroicstudios.heroicvolleyball.command.SpawnBallCommand;
 import me.heroicstudios.heroicvolleyball.command.StartGameCommand;
 import me.heroicstudios.heroicvolleyball.command.StopGameCommand;
+import me.heroicstudios.heroicvolleyball.command.VolleyArenaCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyGiveCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyMusicCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyReloadCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyWandCommand;
-import me.heroicstudios.heroicvolleyball.game.GameManager;
+import me.heroicstudios.heroicvolleyball.game.SessionManager;
 import me.heroicstudios.heroicvolleyball.game.SetupGui;
-import me.heroicstudios.heroicvolleyball.game.CoinFlipGui;
 import me.heroicstudios.heroicvolleyball.gui.GuiListener;
 import me.heroicstudios.heroicvolleyball.hook.VolleyballPlaceholders;
 import me.heroicstudios.heroicvolleyball.listener.ArenaListener;
+import me.heroicstudios.heroicvolleyball.listener.SessionListener;
 import me.heroicstudios.heroicvolleyball.message.Messages;
-import me.heroicstudios.heroicvolleyball.music.MusicManager;
 import me.heroicstudios.heroicvolleyball.party.PartyManager;
-import me.heroicstudios.heroicvolleyball.position.PositionManager;
-import me.heroicstudios.heroicvolleyball.score.ScoreManager;
-import me.heroicstudios.heroicvolleyball.spawn.BallSpawnManager;
 import me.heroicstudios.heroicvolleyball.tool.ToolListener;
 import me.heroicstudios.heroicvolleyball.tool.ToolManager;
 import me.heroicstudios.heroicvolleyball.util.ConfigDefaults;
 import me.heroicstudios.heroicvolleyball.wand.WandListener;
 import me.heroicstudios.heroicvolleyball.wand.WandManager;
 import org.bukkit.command.PluginCommand;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class HeroicVolleyBall extends JavaPlugin {
 
     private ArenaManager arenaManager;
     private WandManager wandManager;
-    private PositionManager positionManager;
     private GuiListener guiListener;
     private ToolManager toolManager;
     private PartyManager partyManager;
-    private GameManager gameManager;
-    private CoinFlipGui coinFlipGui;
+    private SessionManager sessionManager;
     private SetupGui setupGui;
-    private BallManager ballManager;
-    private ScoreManager scoreManager;
-    private MusicManager musicManager;
-    private BackrowManager backrowManager;
-    private BallSpawnManager ballSpawnManager;
     private Messages messages;
 
     @Override
@@ -62,33 +49,23 @@ public final class HeroicVolleyBall extends JavaPlugin {
 
         this.messages = new Messages(this);
         this.arenaManager = new ArenaManager(this);
-        this.backrowManager = new BackrowManager(this);
-        this.ballSpawnManager = new BallSpawnManager(this);
-        this.positionManager = new PositionManager(this);
         this.wandManager = new WandManager(this);
-        this.guiListener = new GuiListener(positionManager, messages);
+        this.guiListener = new GuiListener(arenaManager, messages);
         this.toolManager = new ToolManager(this);
         this.partyManager = new PartyManager(this);
-        this.coinFlipGui = new CoinFlipGui(this, messages);
-        this.gameManager = new GameManager(this, arenaManager, positionManager, toolManager, partyManager, coinFlipGui);
-        this.musicManager = new MusicManager(this);
-        this.scoreManager = new ScoreManager(this, arenaManager, musicManager);
-        this.ballManager = new BallManager(this, arenaManager, scoreManager, gameManager, toolManager);
-        this.gameManager.bind(ballManager, scoreManager, musicManager);
-        this.setupGui = new SetupGui(this, gameManager, partyManager, positionManager);
+        this.sessionManager = new SessionManager(this, arenaManager, toolManager);
+        this.setupGui = new SetupGui(this, sessionManager, partyManager);
 
-        // Sweep ghost balls left in the world save by older plugin builds.
-        ballManager.purgeGhosts();
+        // Sweep ball entities left in the world save by older plugin builds.
+        sessionManager.purgeGhosts();
 
         getServer().getPluginManager().registerEvents(new WandListener(wandManager, messages), this);
         getServer().getPluginManager().registerEvents(new ArenaListener(arenaManager, messages), this);
         getServer().getPluginManager().registerEvents(guiListener, this);
         getServer().getPluginManager().registerEvents(new ToolListener(toolManager), this);
-        getServer().getPluginManager().registerEvents(new BallListener(ballManager, toolManager), this);
+        getServer().getPluginManager().registerEvents(new BallListener(sessionManager, toolManager), this);
+        getServer().getPluginManager().registerEvents(new SessionListener(this, sessionManager), this);
         getServer().getPluginManager().registerEvents(setupGui, this);
-        getServer().getPluginManager().registerEvents(coinFlipGui, this);
-        getServer().getPluginManager().registerEvents(scoreManager, this);
-        scoreManager.applyAll();
 
         if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
             new VolleyballPlaceholders(this).register();
@@ -100,32 +77,33 @@ public final class HeroicVolleyBall extends JavaPlugin {
             volleyWandCommand.setExecutor(new VolleyWandCommand(wandManager, messages));
         }
 
-        SetArenaCommand setArenaCommand = new SetArenaCommand(arenaManager, wandManager, positionManager, messages);
+        SetArenaCommand setArenaCommand = new SetArenaCommand(arenaManager, wandManager, messages);
         PluginCommand setArena = getCommand("setarena");
         if (setArena != null) {
             setArena.setExecutor(setArenaCommand);
             setArena.setTabCompleter(setArenaCommand);
         }
 
-        SetBackrowCommand setBackrowCommand = new SetBackrowCommand(backrowManager, wandManager, messages);
+        SetBackrowCommand setBackrowCommand = new SetBackrowCommand(arenaManager, wandManager, messages);
         PluginCommand setBackrow = getCommand("setbackrow");
         if (setBackrow != null) {
             setBackrow.setExecutor(setBackrowCommand);
             setBackrow.setTabCompleter(setBackrowCommand);
         }
 
-        SetBallSpawnCommand setBallSpawnCommand = new SetBallSpawnCommand(ballSpawnManager, messages);
+        SetBallSpawnCommand setBallSpawnCommand = new SetBallSpawnCommand(arenaManager, messages);
         PluginCommand setBallSpawn = getCommand("setballspawnpoint");
         if (setBallSpawn != null) {
             setBallSpawn.setExecutor(setBallSpawnCommand);
+            setBallSpawn.setTabCompleter(setBallSpawnCommand);
         }
 
-        register("spawnball", new SpawnBallCommand(ballManager, messages));
-        register("startgame", new StartGameCommand(partyManager, setupGui, ballManager, scoreManager, musicManager,
-                arenaManager, positionManager, ballSpawnManager, messages));
-        register("stopgame", new StopGameCommand(ballManager, scoreManager, musicManager, gameManager, messages));
-        register("restartgame", new RestartGameCommand(ballManager, scoreManager, musicManager, gameManager, messages));
+        register("spawnball", new SpawnBallCommand(sessionManager, arenaManager, messages));
+        register("startgame", new StartGameCommand(partyManager, setupGui, sessionManager, arenaManager, messages));
+        register("stopgame", new StopGameCommand(sessionManager, arenaManager, messages));
+        register("restartgame", new RestartGameCommand(sessionManager, arenaManager, messages));
         register("volleyreload", new VolleyReloadCommand(this));
+        register("volleyarena", new VolleyArenaCommand(arenaManager, sessionManager, messages));
 
         PartyCommand partyCommand = new PartyCommand(partyManager, messages);
         for (String name : new String[]{"partycreate", "partyinvite", "partyleave", "partydisband"}) {
@@ -136,7 +114,7 @@ public final class HeroicVolleyBall extends JavaPlugin {
             }
         }
 
-        VolleyMusicCommand volleyMusicCommand = new VolleyMusicCommand(musicManager, messages);
+        VolleyMusicCommand volleyMusicCommand = new VolleyMusicCommand(sessionManager, arenaManager, messages);
         PluginCommand volleyMusic = getCommand("volleymusic");
         if (volleyMusic != null) {
             volleyMusic.setExecutor(volleyMusicCommand);
@@ -157,9 +135,13 @@ public final class HeroicVolleyBall extends JavaPlugin {
         }
     }
 
-    private void register(String name, org.bukkit.command.CommandExecutor executor) {        PluginCommand command = getCommand(name);
+    private void register(String name, org.bukkit.command.CommandExecutor executor) {
+        PluginCommand command = getCommand(name);
         if (command != null) {
             command.setExecutor(executor);
+            if (executor instanceof org.bukkit.command.TabCompleter completer) {
+                command.setTabCompleter(completer);
+            }
         }
     }
 
@@ -168,20 +150,11 @@ public final class HeroicVolleyBall extends JavaPlugin {
         // Each step is isolated: one failing shutdown must never skip the ball
         // removal below it, or the ball would be written to the world save as
         // a ghost that can't be interacted with after the restart.
-        if (gameManager != null) {
-            isolateShutdown("game manager", gameManager::shutdown);
-        }
-        if (ballManager != null) {
-            isolateShutdown("ball manager", ballManager::shutdown);
-        }
-        if (musicManager != null) {
-            isolateShutdown("music manager", musicManager::shutdown);
-        }
-        if (scoreManager != null) {
-            isolateShutdown("score manager", scoreManager::shutdown);
+        if (sessionManager != null) {
+            isolateShutdown("sessions", sessionManager::shutdown);
         }
         if (arenaManager != null) {
-            isolateShutdown("arena save", arenaManager::save);
+            isolateShutdown("arena save", arenaManager::saveAll);
         }
     }
 
@@ -198,20 +171,8 @@ public final class HeroicVolleyBall extends JavaPlugin {
         return arenaManager;
     }
 
-    public BackrowManager getBackrowManager() {
-        return backrowManager;
-    }
-
-    public BallSpawnManager getBallSpawnManager() {
-        return ballSpawnManager;
-    }
-
     public WandManager getWandManager() {
         return wandManager;
-    }
-
-    public PositionManager getPositionManager() {
-        return positionManager;
     }
 
     public GuiListener getGuiListener() {
@@ -222,27 +183,17 @@ public final class HeroicVolleyBall extends JavaPlugin {
         return toolManager;
     }
 
-    public BallManager getBallManager() {
-        return ballManager;
-    }
-
-    public ScoreManager getScoreManager() {
-        return scoreManager;
-    }
-
-    public MusicManager getMusicManager() {
-        return musicManager;
-    }
-
     public PartyManager getPartyManager() {
         return partyManager;
     }
 
-    public GameManager getGameManager() {
-        return gameManager;
+    public SessionManager getSessionManager() {
+        return sessionManager;
     }
 
-    public SetupGui getSetupGui() {return setupGui;}
+    public SetupGui getSetupGui() {
+        return setupGui;
+    }
 
     public Messages getMessages() {
         return messages;

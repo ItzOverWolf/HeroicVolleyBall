@@ -1,58 +1,53 @@
 package me.heroicstudios.heroicvolleyball.command;
 
-import java.util.ArrayList;
 import java.util.List;
 
+import me.heroicstudios.heroicvolleyball.arena.Arena;
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
-import me.heroicstudios.heroicvolleyball.arena.Team;
-import me.heroicstudios.heroicvolleyball.ball.BallManager;
+import me.heroicstudios.heroicvolleyball.game.SessionManager;
 import me.heroicstudios.heroicvolleyball.game.SetupGui;
 import me.heroicstudios.heroicvolleyball.message.Messages;
-import me.heroicstudios.heroicvolleyball.music.MusicManager;
 import me.heroicstudios.heroicvolleyball.party.Party;
 import me.heroicstudios.heroicvolleyball.party.PartyManager;
-import me.heroicstudios.heroicvolleyball.position.PositionManager;
-import me.heroicstudios.heroicvolleyball.score.ScoreManager;
-import me.heroicstudios.heroicvolleyball.spawn.BallSpawnManager;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-public final class StartGameCommand implements CommandExecutor {
+public final class StartGameCommand implements CommandExecutor, TabCompleter {
 
     private final PartyManager partyManager;
     private final SetupGui setupGui;
-    private final BallManager ballManager;
-    private final ScoreManager scoreManager;
-    private final MusicManager musicManager;
+    private final SessionManager sessionManager;
     private final ArenaManager arenaManager;
-    private final PositionManager positionManager;
-    private final BallSpawnManager ballSpawnManager;
     private final Messages messages;
 
-    public StartGameCommand(PartyManager partyManager, SetupGui setupGui, BallManager ballManager,
-                            ScoreManager scoreManager, MusicManager musicManager, ArenaManager arenaManager,
-                            PositionManager positionManager, BallSpawnManager ballSpawnManager, Messages messages) {
+    public StartGameCommand(PartyManager partyManager, SetupGui setupGui, SessionManager sessionManager,
+                            ArenaManager arenaManager, Messages messages) {
         this.partyManager = partyManager;
         this.setupGui = setupGui;
-        this.ballManager = ballManager;
-        this.scoreManager = scoreManager;
-        this.musicManager = musicManager;
+        this.sessionManager = sessionManager;
         this.arenaManager = arenaManager;
-        this.positionManager = positionManager;
-        this.ballSpawnManager = ballSpawnManager;
         this.messages = messages;
     }
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        if (!isSetupComplete(sender)) {
+        Arena arena = resolve(sender, args.length >= 1 ? args[0] : null);
+        if (arena == null) {
+            messages.send(sender, "arena.none");
             return true;
         }
 
         if (sender instanceof Player player) {
+            if (!arena.isComplete()) {
+                messages.send(player, "game.setup-missing");
+                messages.send(player, "arena.still-incomplete", "arena", arena.getName());
+                return true;
+            }
             Party party = partyManager.getParty(player);
             if (party != null) {
                 if (party.size() < 2 || party.size() % 2 != 0) {
@@ -69,47 +64,38 @@ public final class StartGameCommand implements CommandExecutor {
             return true;
         }
 
-        scoreManager.resetMatch();
-        if (!ballManager.spawnAtStart()) {
+        if (!arena.isComplete()) {
+            messages.send(sender, "game.setup-missing");
+            messages.send(sender, "arena.still-incomplete", "arena", arena.getName());
+            return true;
+        }
+
+        if (!sessionManager.startConsole(arena)) {
             messages.send(sender, "game.console-need-position");
             return true;
         }
-        musicManager.startDefault();
-        messages.send(sender, "game.console-start");
+        messages.send(sender, "game.console-start", "arena", arena.getName());
         return true;
     }
 
-    private boolean isSetupComplete(CommandSender sender) {
-        List<String[]> missing = new ArrayList<>();
-
-        for (Team team : Team.values()) {
-            if (!arenaManager.isSet(team)) {
-                missing.add(new String[]{"game.setup-missing-arena",
-                        "team", Messages.teamDisplay(team),
-                        "color", team.name().toLowerCase()});
-            }
-            if (!positionManager.hasAllPositions(team)) {
-                missing.add(new String[]{"game.setup-missing-positions",
-                        "team", Messages.teamDisplay(team)});
-            }
-            if (!ballSpawnManager.isSet(team)) {
-                missing.add(new String[]{"game.setup-missing-spawnpoint",
-                        "team", Messages.teamDisplay(team),
-                        "color", team.name().toLowerCase()});
+    private @Nullable Arena resolve(CommandSender sender, @Nullable String name) {
+        if (name != null && !name.isBlank()) {
+            return arenaManager.get(name);
+        }
+        if (sender instanceof Player player) {
+            Arena arena = arenaManager.arenaAt(player.getLocation());
+            if (arena != null) {
+                return arena;
             }
         }
+        return arenaManager.getDefault();
+    }
 
-        if (missing.isEmpty()) {
-            return true;
+    @Override
+    public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+        if (args.length == 1) {
+            return Filter.names(arenaManager.names(), args[0]);
         }
-
-        messages.send(sender, "game.setup-missing");
-        for (String[] entry : missing) {
-            String key = entry[0];
-            String[] placeholders = new String[entry.length - 1];
-            System.arraycopy(entry, 1, placeholders, 0, placeholders.length);
-            messages.send(sender, key, placeholders);
-        }
-        return false;
+        return List.of();
     }
 }

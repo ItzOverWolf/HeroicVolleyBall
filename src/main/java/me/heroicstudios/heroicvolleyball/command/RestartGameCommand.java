@@ -1,46 +1,70 @@
 package me.heroicstudios.heroicvolleyball.command;
 
-import me.heroicstudios.heroicvolleyball.ball.BallManager;
-import me.heroicstudios.heroicvolleyball.game.GameManager;
+import java.util.List;
+
+import me.heroicstudios.heroicvolleyball.arena.Arena;
+import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
+import me.heroicstudios.heroicvolleyball.game.GameSession;
+import me.heroicstudios.heroicvolleyball.game.SessionManager;
 import me.heroicstudios.heroicvolleyball.message.Messages;
-import me.heroicstudios.heroicvolleyball.music.MusicManager;
-import me.heroicstudios.heroicvolleyball.score.ScoreManager;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-public final class RestartGameCommand implements CommandExecutor {
+public final class RestartGameCommand implements CommandExecutor, TabCompleter {
 
-    private final BallManager ballManager;
-    private final ScoreManager scoreManager;
-    private final MusicManager musicManager;
-    private final GameManager gameManager;
+    private final SessionManager sessionManager;
+    private final ArenaManager arenaManager;
     private final Messages messages;
 
-    public RestartGameCommand(BallManager ballManager, ScoreManager scoreManager, MusicManager musicManager,
-                              GameManager gameManager, Messages messages) {
-        this.ballManager = ballManager;
-        this.scoreManager = scoreManager;
-        this.musicManager = musicManager;
-        this.gameManager = gameManager;
+    public RestartGameCommand(SessionManager sessionManager, ArenaManager arenaManager, Messages messages) {
+        this.sessionManager = sessionManager;
+        this.arenaManager = arenaManager;
         this.messages = messages;
     }
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        ballManager.removeBall();
-        musicManager.stop();
-        scoreManager.resetMatch();
-        gameManager.end();
-
-        if (!ballManager.spawnAtStart()) {
+        Arena arena = resolve(sender, args.length >= 1 ? args[0] : null);
+        if (arena == null) {
+            messages.send(sender, "arena.none");
+            return true;
+        }
+        GameSession session = sessionManager.get(arena);
+        if (session == null) {
+            messages.send(sender, "game.not-running", "arena", arena.getName());
+            return true;
+        }
+        if (!session.restart()) {
             messages.send(sender, "game.console-need-position");
             return true;
         }
-
-        musicManager.startDefault();
-        messages.send(sender, "game.restarted");
+        messages.send(sender, "game.restarted", "arena", arena.getName());
         return true;
+    }
+
+    private @Nullable Arena resolve(CommandSender sender, @Nullable String name) {
+        if (name != null && !name.isBlank()) {
+            return arenaManager.get(name);
+        }
+        if (sender instanceof Player player) {
+            Arena arena = arenaManager.arenaAt(player.getLocation());
+            if (arena != null) {
+                return arena;
+            }
+        }
+        return arenaManager.getDefault();
+    }
+
+    @Override
+    public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
+        if (args.length == 1) {
+            return Filter.names(arenaManager.names(), args[0]);
+        }
+        return List.of();
     }
 }

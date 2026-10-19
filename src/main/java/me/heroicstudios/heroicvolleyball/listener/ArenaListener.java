@@ -4,8 +4,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import me.heroicstudios.heroicvolleyball.arena.Arena;
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
-import me.heroicstudios.heroicvolleyball.arena.Team;
+import me.heroicstudios.heroicvolleyball.arena.ArenaSide;
+import me.heroicstudios.heroicvolleyball.arena.Side;
 import me.heroicstudios.heroicvolleyball.message.Messages;
 import org.bukkit.Location;
 import org.bukkit.Sound;
@@ -20,7 +22,7 @@ public final class ArenaListener implements Listener {
 
     private final ArenaManager arenaManager;
     private final Messages messages;
-    private final Map<UUID, Team> currentArenas = new HashMap<>();
+    private final Map<UUID, ArenaSide> currentArenas = new HashMap<>();
 
     public ArenaListener(ArenaManager arenaManager, Messages messages) {
         this.arenaManager = arenaManager;
@@ -41,10 +43,10 @@ public final class ArenaListener implements Listener {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
 
-        Team current = arenaManager.getArenaAt(to);
-        Team previous = currentArenas.get(uuid);
+        ArenaSide current = locate(to);
+        ArenaSide previous = currentArenas.get(uuid);
 
-        if (current == previous) {
+        if (same(current, previous)) {
             return;
         }
 
@@ -54,9 +56,31 @@ public final class ArenaListener implements Listener {
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.6f, 1.2f);
         } else {
             currentArenas.put(uuid, current);
-            messages.actionBar(player, "arena.enter", "team", Messages.teamDisplay(current));
+            messages.actionBar(player, "arena.enter",
+                    "team", Messages.teamDisplay(current.side()),
+                    "arena", current.arena().getName());
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, 0.6f, 1.6f);
         }
+    }
+
+    private @Nullable ArenaSide locate(Location location) {
+        ArenaSide court = arenaManager.courtAt(location);
+        if (court != null) {
+            return court;
+        }
+        Arena arena = arenaManager.arenaAt(location);
+        if (arena == null) {
+            return null;
+        }
+        Side side = arena.getBackrowSide(location);
+        return side != null ? new ArenaSide(arena, side) : null;
+    }
+
+    private boolean same(@Nullable ArenaSide first, @Nullable ArenaSide second) {
+        if (first == null || second == null) {
+            return first == second;
+        }
+        return first.arena().getName().equals(second.arena().getName()) && first.side() == second.side();
     }
 
     @EventHandler

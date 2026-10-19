@@ -2,9 +2,10 @@ package me.heroicstudios.heroicvolleyball.hook;
 
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
-import me.heroicstudios.heroicvolleyball.arena.Team;
+import me.heroicstudios.heroicvolleyball.arena.Arena;
+import me.heroicstudios.heroicvolleyball.arena.Side;
 import me.heroicstudios.heroicvolleyball.ball.BallManager;
-import me.heroicstudios.heroicvolleyball.game.GameManager;
+import me.heroicstudios.heroicvolleyball.game.GameSession;
 import me.heroicstudios.heroicvolleyball.score.ScoreManager;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
@@ -41,9 +42,9 @@ public final class VolleyballPlaceholders extends PlaceholderExpansion {
 
     @Override
     public @Nullable String onRequest(OfflinePlayer player, @NotNull String params) {
-        ScoreManager score = plugin.getScoreManager();
-        GameManager game = plugin.getGameManager();
-        BallManager ball = plugin.getBallManager();
+        GameSession session = resolve(player);
+        ScoreManager score = session != null ? session.getScore() : null;
+        BallManager ball = session != null ? session.getBall() : null;
 
         switch (params.toLowerCase()) {
             case "red_points", "red_score":
@@ -61,9 +62,13 @@ public final class VolleyballPlaceholders extends PlaceholderExpansion {
             case "match_over":
                 return score != null ? String.valueOf(score.isMatchOver()) : "false";
             case "active":
-                return game != null ? String.valueOf(game.isActive()) : "false";
+                return String.valueOf(isAnyActive());
             case "players":
-                return game != null ? String.valueOf(game.getPlayerCount()) : "0";
+                return String.valueOf(totalPlayers());
+            case "sessions":
+                return String.valueOf(plugin.getSessionManager().sessions().size());
+            case "arena":
+                return session != null ? session.getArena().getName() : "None";
             case "touches":
                 return ball != null ? String.valueOf(ball.getTouches()) : "0";
             case "max_touches":
@@ -74,31 +79,66 @@ public final class VolleyballPlaceholders extends PlaceholderExpansion {
                 return ball != null && ball.getPossession() != null
                         ? ball.getPossession().getDisplayName() : "None";
             case "team":
-                return teamOf(player, game);
+                return teamOf(player, session);
             case "position":
-                return positionOf(player, game);
+                return positionOf(player, session);
             default:
                 return null;
         }
     }
 
-    private String teamOf(OfflinePlayer player, GameManager game) {
-        Team team = teamOf(game, player);
-        return team != null ? team.getDisplayName() : "None";
+    private @Nullable GameSession resolve(OfflinePlayer player) {
+        if (player instanceof Player online) {
+            GameSession session = plugin.getSessionManager().get(online);
+            if (session != null) {
+                return session;
+            }
+        }
+        Arena arena = plugin.getArenaManager().getDefault();
+        if (arena != null) {
+            GameSession session = plugin.getSessionManager().get(arena);
+            if (session != null) {
+                return session;
+            }
+        }
+        for (GameSession candidate : plugin.getSessionManager().sessions()) {
+            if (candidate.isActive()) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
-    private String positionOf(OfflinePlayer player, GameManager game) {
-        if (game == null || !(player instanceof Player online)) {
+    private boolean isAnyActive() {
+        for (GameSession session : plugin.getSessionManager().sessions()) {
+            if (session.isActive()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private int totalPlayers() {
+        int total = 0;
+        for (GameSession session : plugin.getSessionManager().sessions()) {
+            total += session.getPlayerCount();
+        }
+        return total;
+    }
+
+    private String teamOf(OfflinePlayer player, @Nullable GameSession session) {
+        if (session == null || !(player instanceof Player online)) {
+            return "None";
+        }
+        Side side = session.getSide(online);
+        return side != null ? side.getDisplayName() : "None";
+    }
+
+    private String positionOf(OfflinePlayer player, @Nullable GameSession session) {
+        if (session == null || !(player instanceof Player online)) {
             return "0";
         }
-        Integer position = game.getPosition(online);
+        Integer position = session.getPosition(online);
         return position != null ? String.valueOf(position) : "0";
-    }
-
-    private @Nullable Team teamOf(GameManager game, OfflinePlayer player) {
-        if (game == null || !(player instanceof Player online)) {
-            return null;
-        }
-        return game.getTeam(online);
     }
 }
