@@ -1,10 +1,10 @@
 name: HeroicVolleyBall
 version: '${version}'
 main: me.heroicstudios.heroicvolleyball.HeroicVolleyBall
-api-version: '26.3'
+api-version: '1.21'
 description: A Haikyuu inspired volleyball plugin
 authors: [HeroicStudios]
-softdepend: [PlaceholderAPI]
+softdepend: [PlaceholderAPI, ViaVersion]
 
 commands:
   volleywand:

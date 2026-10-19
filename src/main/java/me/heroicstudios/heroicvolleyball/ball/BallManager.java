@@ -7,6 +7,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.destroystokyo.paper.profile.ProfileProperty;
+import com.viaversion.viaversion.api.Via;
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
 import me.heroicstudios.heroicvolleyball.arena.Arena;
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
@@ -22,6 +23,7 @@ import me.heroicstudios.heroicvolleyball.tool.VolleyTool;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -31,8 +33,12 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.ItemDisplay;
+import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Player;
+import org.bukkit.entity.Slime;
 import org.bukkit.entity.SulfurCube;
+import org.bukkit.entity.TextDisplay;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.Damageable;
@@ -47,6 +53,31 @@ public final class BallManager {
 
     private static final double COLLISION_STEP = 0.1;
 
+    /**
+     * The sulfur cube mob only exists on newer Minecraft versions. Checked at
+     * runtime so the plugin can fall back to an invisible slime hitbox on older
+     * servers without ever linking the missing class.
+     */
+    private static final boolean SULFUR_CUBE_SUPPORTED = classExists("org.bukkit.entity.SulfurCube");
+
+    /**
+     * Optional ViaVersion hook: lets a new server tell which clients are too
+     * old to render a sulfur cube so they can be shown the ItemDisplay twin.
+     */
+    private static final boolean VIA_AVAILABLE = classExists("com.viaversion.viaversion.api.Via");
+
+    /** Network protocol of 1.21.9 - the first release that knows the sulfur cube. */
+    private static final int SULFUR_CUBE_PROTOCOL = 773;
+
+    private static boolean classExists(String name) {
+        try {
+            Class.forName(name, false, BallManager.class.getClassLoader());
+            return true;
+        } catch (ClassNotFoundException | LinkageError e) {
+            return false;
+        }
+    }
+
     private enum State {
         IDLE,
         RALLY
@@ -59,8 +90,9 @@ public final class BallManager {
     private final ToolManager toolManager;
     private final NamespacedKey ballKey;
 
-    private @Nullable SulfurCube ball;
+    private @Nullable LivingEntity ball;
     private @Nullable ItemDisplay ballDisplay;
+    private @Nullable TextDisplay ballNameDisplay;
     private @Nullable Location current;
     private @Nullable BukkitTask task;
     private Vector motion = new Vector();
@@ -92,7 +124,6 @@ public final class BallManager {
     private boolean showName = true;
     private boolean pickupEnabled = true;
     private boolean sulfurCube = true;
-    private boolean cubeInvisible = false;
     private Material ballMaterial = Material.GRAY_WOOL;
     private String ballTexture = "";
     private double shovelWooden = 0.6;
@@ -151,7 +182,6 @@ public final class BallManager {
         this.showName = config.getBoolean("ball.show-name", true);
         this.pickupEnabled = config.getBoolean("ball.pickup-enabled", true);
         this.sulfurCube = config.getBoolean("ball.sulfur-cube", true);
-        this.cubeInvisible = config.getBoolean("ball.cube-invisible", false);
         this.ballMaterial = parseBallMaterial(config.getString("ball.material", "GRAY_WOOL"));
         this.ballTexture = config.getString("ball.texture", "");
         this.shovelWooden = config.getDouble("ball.power.shovel.wooden", 0.6);
@@ -167,7 +197,7 @@ public final class BallManager {
         updateName();
     }
 
-    public @Nullable SulfurCube getBall() {
+    public @Nullable LivingEntity getBall() {
         return ball;
     }
 
@@ -188,7 +218,14 @@ public final class BallManager {
     }
 
     public boolean isBall(@Nullable Entity entity) {
-        return ball != null && entity != null && entity.getUniqueId().equals(ball.getUniqueId());
+        if (entity == null) {
+            return false;
+        }
+        if (ball != null && entity.getUniqueId().equals(ball.getUniqueId())) {
+            return true;
+        }
+        // Old clients attack the ItemDisplay twin (they cannot see the cube).
+        return ballDisplay != null && entity.getUniqueId().equals(ballDisplay.getUniqueId());
     }
 
     public boolean canPickupBall() {
@@ -314,13 +351,12 @@ public final class BallManager {
     }
 
     public boolean resetToServe(Team team) {
-        PositionManager positionManager = plugin.getPositionManager();
         Location base = null;
-        if (positionManager != null) {
-            base = positionManager.getPosition(team, 6);
-        }
-        if (base == null && plugin.getBallSpawnManager() != null) {
+        if (plugin.getBallSpawnManager() != null && plugin.getBallSpawnManager().isSet(team)) {
             base = plugin.getBallSpawnManager().get(team);
+        }
+        if (base == null && plugin.getPositionManager() != null) {
+            base = plugin.getPositionManager().getPosition(team, 6);
         }
         if (base == null) {
             base = arenaCenterFloor(team);
@@ -375,20 +411,39 @@ public final class BallManager {
             return;
         }
 
-        this.ball = world.spawn(location, SulfurCube.class, CreatureSpawnEvent.SpawnReason.CUSTOM, cube -> {
-            cube.setSize(size);
-            cube.setWander(false);
-            cube.setAware(false);
-            cube.setAI(false);
-            cube.setGravity(false);
-            cube.setPersistent(true);
-            cube.setSilent(true);
-            cube.setMaximumNoDamageTicks(0);
-            cube.setNoDamageTicks(0);
-            cube.setCustomNameVisible(true);
-            cube.setInvisible(cubeInvisible || !sulfurCube);
-            cube.setEquipped(ballItem(ballMaterial));
-        });
+        if (useSulfurCube()) {
+            this.ball = world.spawn(location, SulfurCube.class, CreatureSpawnEvent.SpawnReason.CUSTOM, cube -> {
+                cube.setSize(size);
+                cube.setWander(false);
+                cube.setAware(false);
+                cube.setAI(false);
+                cube.setGravity(false);
+                // Non-persistent: never written to the world save, so a crash
+                // or force-stop can never leave a ghost ball behind.
+                cube.setPersistent(false);
+                cube.setSilent(true);
+                cube.setMaximumNoDamageTicks(0);
+                cube.setNoDamageTicks(0);
+                cube.setInvisible(true);
+                cube.getPersistentDataContainer().set(ballKey, PersistentDataType.BOOLEAN, true);
+            });
+        } else {
+            // Older servers have no sulfur cube mob: use an invisible slime as
+            // the pure hitbox. It carries no equipment; the ItemDisplay shows
+            // the ball item on top of it, so it looks identical everywhere.
+            this.ball = world.spawn(location, Slime.class, CreatureSpawnEvent.SpawnReason.CUSTOM, slime -> {
+                slime.setSize(Math.max(1, size));
+                slime.setAware(false);
+                slime.setAI(false);
+                slime.setGravity(false);
+                slime.setPersistent(false);
+                slime.setSilent(true);
+                slime.setMaximumNoDamageTicks(0);
+                slime.setNoDamageTicks(0);
+                slime.setInvisible(true);
+                slime.getPersistentDataContainer().set(ballKey, PersistentDataType.BOOLEAN, true);
+            });
+        }
 
         this.current = location.clone();
         this.motion = new Vector();
@@ -859,6 +914,57 @@ public final class BallManager {
         applyBallAppearance();
     }
 
+    /**
+     * True when the ball should be a real sulfur cube: the config asks for one
+     * and this Minecraft version actually has the mob. Otherwise the invisible
+     * slime fallback is used.
+     */
+    private boolean useSulfurCube() {
+        return sulfurCube && SULFUR_CUBE_SUPPORTED;
+    }
+
+    /**
+     * Per-client ball rendering. The floating ItemDisplay head IS the ball for
+     * every player on every version (1.21+ all render display entities) and is
+     * never hidden from anyone, so the ball can never turn invisible. The mob
+     * underneath is a pure invisible hitbox; it is additionally hidden from
+     * clients below 1.21.9 (detected via ViaVersion) so a protocol mapping can
+     * never replace the unknown sulfur cube entity with a visible fallback mob.
+     * Those clients hit the display twin instead (isBall matches it).
+     */
+    public void applyBallVisibility(Player player) {
+        if (ball == null || !ball.isValid()) {
+            return;
+        }
+        if (ballDisplay != null) {
+            player.showEntity(plugin, ballDisplay);
+        }
+        if (useSulfurCube() && !clientSupportsSulfurCube(player)) {
+            player.hideEntity(plugin, ball);
+        } else {
+            player.showEntity(plugin, ball);
+        }
+    }
+
+    public void applyBallVisibilityToAll() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            applyBallVisibility(player);
+        }
+    }
+
+    private boolean clientSupportsSulfurCube(Player player) {
+        if (!VIA_AVAILABLE) {
+            return true;
+        }
+        try {
+            int protocol = Via.getAPI().getPlayerVersion(player.getUniqueId());
+            // Unknown/negative = assume modern so the cube is never hidden by mistake.
+            return protocol < 0 || protocol >= SULFUR_CUBE_PROTOCOL;
+        } catch (Throwable t) {
+            return true;
+        }
+    }
+
     private void applyBallAppearance() {
         if (ball == null || !ball.isValid()) {
             return;
@@ -866,16 +972,24 @@ public final class BallManager {
 
         ItemStack item = ballItem(tintedBallMaterial());
 
-        if (sulfurCube) {
-            ball.setInvisible(cubeInvisible);
-            ball.setEquipped(item);
-            removeDisplay();
+        // The mob underneath is always an invisible physics hitbox with no
+        // equipment; the floating head display is the ball everyone sees.
+        ball.setInvisible(true);
+        showDisplay(item);
+        applyBallVisibilityToAll();
+    }
+
+    /**
+     * Warns an op on login when the config asks for a sulfur cube but this
+     * server version does not have the mob (older server or a downgrade) - the
+     * ball silently uses the slime hitbox fallback, so the owner can set
+     * ball.sulfur-cube: false to match reality.
+     */
+    public void notifyVersionMismatch(Player player) {
+        if (!player.isOp() || !sulfurCube || SULFUR_CUBE_SUPPORTED) {
             return;
         }
-
-        ball.setInvisible(true);
-        ball.setEquipped(new ItemStack(Material.AIR));
-        showDisplay(item);
+        plugin.getMessages().send(player, "ball.sulfur-cube-unsupported");
     }
 
     private Material tintedBallMaterial() {
@@ -901,14 +1015,16 @@ public final class BallManager {
         ballDisplay = ball.getWorld().spawn(ball.getLocation(), ItemDisplay.class,
                 CreatureSpawnEvent.SpawnReason.CUSTOM, display -> {
                     display.setItemStack(item);
-                    display.setPersistent(true);
+                    display.setPersistent(false);
                     display.setInvulnerable(true);
                     display.setGravity(false);
                     display.setSilent(true);
                     display.setBillboard(Display.Billboard.FIXED);
                     display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
                     display.setCustomNameVisible(false);
-                    display.setTeleportDuration(0);
+                    display.getPersistentDataContainer().set(ballKey, PersistentDataType.BOOLEAN, true);
+                    // Glide over one tick so the twin tracks the ball smoothly.
+                    display.setTeleportDuration(1);
                 });
     }
 
@@ -1022,6 +1138,7 @@ public final class BallManager {
 
         if (!showName) {
             ball.setCustomNameVisible(false);
+            removeNameDisplay();
             return;
         }
 
@@ -1036,8 +1153,60 @@ public final class BallManager {
                     "touches", String.valueOf(Math.max(touches, 0)),
                     "max", String.valueOf(maxTouches));
         }
-        ball.customName(name);
-        ball.setCustomNameVisible(true);
+
+        // The ball mob is always invisible and clients never render a name tag
+        // on an invisible entity, so the name always floats on the TextDisplay
+        // hologram - it shows for every player on every version.
+        ball.setCustomNameVisible(false);
+        showNameDisplay(name);
+    }
+
+    private @Nullable Location nameDisplayLocation() {
+        Location base = current != null ? current : (ball != null ? ball.getLocation() : null);
+        if (base == null) {
+            return null;
+        }
+        return base.clone().add(0.0, ballHeight() + 0.5, 0.0);
+    }
+
+    private void showNameDisplay(Component name) {
+        Location location = nameDisplayLocation();
+        if (location == null || location.getWorld() == null) {
+            return;
+        }
+        if (ballNameDisplay != null && ballNameDisplay.isValid()) {
+            ballNameDisplay.text(name);
+            ballNameDisplay.teleport(location);
+            return;
+        }
+        removeNameDisplay();
+        ballNameDisplay = location.getWorld().spawn(location, TextDisplay.class,
+                CreatureSpawnEvent.SpawnReason.CUSTOM, display -> {
+                    display.text(name);
+                    display.setBillboard(Display.Billboard.CENTER);
+                    display.setAlignment(TextDisplay.TextAlignment.CENTER);
+                    display.setPersistent(false);
+                    display.setInvulnerable(true);
+                    display.setGravity(false);
+                    display.setSilent(true);
+                    display.setShadowed(false);
+                    display.setSeeThrough(false);
+                    display.setDefaultBackground(false);
+                    display.setBackgroundColor(Color.fromARGB(0));
+                    display.getPersistentDataContainer().set(ballKey, PersistentDataType.BOOLEAN, true);
+                    // 1 = the client glides to each new position over one tick,
+                    // matching how it interpolates the ball entity itself.
+                    // 0 would snap to the raw server position and look laggy.
+                    display.setTeleportDuration(1);
+                    display.setCustomNameVisible(false);
+                });
+    }
+
+    private void removeNameDisplay() {
+        if (ballNameDisplay != null) {
+            ballNameDisplay.remove();
+            ballNameDisplay = null;
+        }
     }
 
     private double shovelPower(VolleyTier tier) {
@@ -1065,6 +1234,7 @@ public final class BallManager {
 
     public void removeBall() {
         removeDisplay();
+        removeNameDisplay();
         resetShieldCooldown();
         if (ball != null) {
             ball.remove();
@@ -1076,6 +1246,7 @@ public final class BallManager {
 
     private void cleanup() {
         removeDisplay();
+        removeNameDisplay();
         resetShieldCooldown();
         ball = null;
         current = null;
@@ -1092,6 +1263,7 @@ public final class BallManager {
             task = null;
         }
         removeDisplay();
+        removeNameDisplay();
         resetShieldCooldown();
         if (ball != null) {
             ball.remove();
@@ -1099,5 +1271,44 @@ public final class BallManager {
         }
         current = null;
         motion = new Vector();
+    }
+
+    /**
+     * Removes leftover ball entities from the world on startup. Ball entities
+     * are non-persistent now so they can never be saved again, but ghosts
+     * written to disk by older builds (force-stops before onDisable ran) still
+     * need to be swept: tagged entities first, then the legacy signature of an
+     * AI-disabled invisible/named ball mob.
+     */
+    public void purgeGhosts() {
+        int removed = 0;
+        for (World world : Bukkit.getWorlds()) {
+            for (Entity entity : world.getEntities()) {
+                if (isGhostBall(entity)) {
+                    entity.remove();
+                    removed++;
+                }
+            }
+        }
+        if (removed > 0) {
+            plugin.getLogger().info("Removed " + removed + " leftover volleyball ball entity(ies) from the world.");
+        }
+    }
+
+    boolean isGhostBall(Entity entity) {
+        if (ball != null && entity.getUniqueId().equals(ball.getUniqueId())) {
+            return false;
+        }
+        if (entity.getPersistentDataContainer().has(ballKey, PersistentDataType.BOOLEAN)) {
+            return true;
+        }
+        // Signature of ghosts saved by builds before ball entities were tagged
+        // and made non-persistent: a ball mob with AI switched off that is
+        // either invisible or carried the touch counter as its custom name.
+        if (!(entity instanceof Slime) && !(SULFUR_CUBE_SUPPORTED && entity instanceof SulfurCube)) {
+            return false;
+        }
+        Mob mob = (Mob) entity;
+        return !mob.isAware() && (mob.isInvisible() || mob.customName() != null);
     }
 }

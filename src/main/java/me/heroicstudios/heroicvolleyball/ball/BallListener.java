@@ -3,7 +3,9 @@ package me.heroicstudios.heroicvolleyball.ball;
 import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
 import me.heroicstudios.heroicvolleyball.tool.ToolManager;
 import me.heroicstudios.heroicvolleyball.tool.VolleyTool;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.event.world.EntitiesLoadEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
@@ -11,6 +13,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
@@ -22,6 +25,23 @@ public final class BallListener implements Listener {
     public BallListener(BallManager ballManager, ToolManager toolManager) {
         this.ballManager = ballManager;
         this.toolManager = toolManager;
+    }
+
+    @EventHandler
+    public void onJoin(PlayerJoinEvent event) {
+        ballManager.applyBallVisibility(event.getPlayer());
+        ballManager.notifyVersionMismatch(event.getPlayer());
+    }
+
+    // Ghost balls saved to disk by older builds live in chunks that may not be
+    // loaded yet at startup - sweep them the moment their entities come in.
+    @EventHandler
+    public void onEntitiesLoad(EntitiesLoadEvent event) {
+        for (Entity entity : event.getEntities()) {
+            if (ballManager.isGhostBall(entity)) {
+                entity.remove();
+            }
+        }
     }
 
     @EventHandler

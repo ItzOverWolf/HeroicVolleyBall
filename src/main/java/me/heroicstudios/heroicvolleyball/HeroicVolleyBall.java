@@ -77,6 +77,9 @@ public final class HeroicVolleyBall extends JavaPlugin {
         this.gameManager.bind(ballManager, scoreManager, musicManager);
         this.setupGui = new SetupGui(this, gameManager, partyManager, positionManager);
 
+        // Sweep ghost balls left in the world save by older plugin builds.
+        ballManager.purgeGhosts();
+
         getServer().getPluginManager().registerEvents(new WandListener(wandManager, messages), this);
         getServer().getPluginManager().registerEvents(new ArenaListener(arenaManager, messages), this);
         getServer().getPluginManager().registerEvents(guiListener, this);
@@ -162,20 +165,32 @@ public final class HeroicVolleyBall extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        // Each step is isolated: one failing shutdown must never skip the ball
+        // removal below it, or the ball would be written to the world save as
+        // a ghost that can't be interacted with after the restart.
         if (gameManager != null) {
-            gameManager.shutdown();
+            isolateShutdown("game manager", gameManager::shutdown);
         }
         if (ballManager != null) {
-            ballManager.shutdown();
+            isolateShutdown("ball manager", ballManager::shutdown);
         }
         if (musicManager != null) {
-            musicManager.shutdown();
+            isolateShutdown("music manager", musicManager::shutdown);
         }
         if (scoreManager != null) {
-            scoreManager.shutdown();
+            isolateShutdown("score manager", scoreManager::shutdown);
         }
         if (arenaManager != null) {
-            arenaManager.save();
+            isolateShutdown("arena save", arenaManager::save);
+        }
+    }
+
+    private void isolateShutdown(String what, Runnable action) {
+        try {
+            action.run();
+        } catch (Throwable t) {
+            getLogger().severe("Error while shutting down " + what + ": " + t.getMessage());
+            t.printStackTrace();
         }
     }
 

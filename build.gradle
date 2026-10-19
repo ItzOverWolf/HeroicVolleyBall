@@ -1,3 +1,5 @@
+import org.gradle.api.attributes.java.TargetJvmVersion
+
 plugins {
     id 'java'
 }
@@ -15,29 +17,42 @@ repositories {
         name = "placeholderapi"
         url = "https://repo.extendedclip.com/releases/"
     }
+    maven {
+        name = "viaversion"
+        url = "https://repo.viaversion.com"
+    }
 }
 
 dependencies {
     compileOnly "io.papermc.paper:paper-api:26.3.build.175-stable"
     compileOnly "me.clip:placeholderapi:2.12.3"
+    compileOnly "com.viaversion:viaversion-api:5.12.1"
 }
 
-def targetJavaVersion = 25
+// paper-api 26.3 is a Java 25 library (class file 69): the compiler MUST run
+// on a JDK 25 toolchain or javac rejects it with "class file has wrong
+// version 69.0". The toolchain makes Gradle (and IntelliJ's Gradle build)
+// locate a JDK 25 no matter which JDK the IDE/Gradle daemon itself runs on.
+// options.release 21 then emits Java 21 bytecode so the jar still loads on
+// older Java 21 servers.
 java {
-    def javaVersion = JavaVersion.toVersion(targetJavaVersion)
-    sourceCompatibility = javaVersion
-    targetCompatibility = javaVersion
-    if (JavaVersion.current() < javaVersion) {
-        toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+// options.release below makes Gradle ask the compile classpath for JVM 21
+// libraries, which paper-api 26.3 (JVM 25) fails - widen the attribute back
+// so only our own output is constrained to 21.
+configurations.compileClasspath {
+    attributes {
+        attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 25)
     }
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-
-    if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
-        options.release.set(targetJavaVersion)
-    }
+    options.release = 21
 }
 
 processResources {
