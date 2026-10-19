@@ -23,11 +23,14 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
+import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.World;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
@@ -45,6 +48,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
 import org.joml.Quaternionf;
@@ -115,6 +119,9 @@ public final class BallManager {
     private double shieldCatchHeight = 3.0;
     private int shieldCooldown = 100;
     private int shieldCooldownTicks;
+    private boolean swingFallback = true;
+    private double swingReachBuffer = 0.5;
+    private double swingSpeedTolerance = 1.0;
     private final Map<UUID, ItemStack> brokenShields = new HashMap<>();
     private double bounceFactor = 0.3;
     private double settleThreshold = 0.12;
@@ -174,6 +181,9 @@ public final class BallManager {
         this.shieldCatchReach = config.getDouble("ball.shield.catch-reach", 2.5);
         this.shieldCatchHeight = config.getDouble("ball.shield.catch-height", 3.0);
         this.shieldCooldown = Math.max(0, config.getInt("ball.shield.cooldown", 100));
+        this.swingFallback = config.getBoolean("ball.hit.swing-fallback", true);
+        this.swingReachBuffer = config.getDouble("ball.hit.swing-reach-buffer", 0.5);
+        this.swingSpeedTolerance = Math.max(0.0, config.getDouble("ball.hit.swing-speed-tolerance", 1.0));
         this.bounceFactor = config.getDouble("ball.bounce", 0.3);
         this.serveResetDelay = Math.max(0, config.getInt("ball.serve-reset-delay", 10));
         this.pointCountdown = Math.max(0, config.getInt("game.point-countdown", 3));
@@ -512,6 +522,67 @@ public final class BallManager {
         } else if (tool == VolleyTool.SHIELD) {
             block(player);
         }
+    }
+
+    /**
+     * Server-side fallback for clicks the vanilla attack packet never delivers
+     * as a hit: a fast-falling ball sits at different positions on the client
+     * and the server, so the attack can fail both the crosshair and the reach
+     * check even though the player clearly clicked the ball they saw. Called
+     * from the arm swing event; BallListener deduplicates it against a real
+     * attack in the same tick. Same tool rules, cooldowns and penalties apply
+     * because the hit still flows through onPlayerHit.
+     */
+    public boolean tryReachHit(Player player) {
+        if (!swingFallback || ball == null || !ball.isValid() || ball.isDead()
+                || current == null || awaitingServe) {
+            return false;
+        }
+
+        Location eye = player.getEyeLocation();
+        Vector look = eye.getDirection();
+        if (look.lengthSquared() < 1.0E-6) {
+            return false;
+        }
+        look = look.normalize();
+
+        Vector toBall = current.toVector()
+                .add(new Vector(0.0, ballHeight() / 2.0, 0.0))
+                .subtract(eye.toVector());
+        double along = toBall.dot(look);
+        if (along <= 0.0) {
+            return false;
+        }
+
+        // Crosshair must pass within the ball's surface plus however far the
+        // ball dropped since the client last saw it.
+        double tolerance = Math.max(ballRadius(), ballHeight() / 2.0)
+                + Math.min(motion.length() * swingSpeedTolerance, 4.0);
+        if (toBall.crossProduct(look).length() > tolerance) {
+            return false;
+        }
+        // Distance from the eye to the ball's surface must fit the player's
+        // interaction range (includes the game's tools.reach-bonus).
+        if (toBall.length() - tolerance > interactionReach(player)) {
+            return false;
+        }
+
+        // No swinging through walls or the net: a block clearly in front of
+        // the ball blocks the fallback. The one block slack keeps the floor
+        // the ball rests on from counting as cover when aiming downwards.
+        RayTraceResult hit = eye.getWorld().rayTraceBlocks(eye, look, along,
+                FluidCollisionMode.NEVER, true);
+        if (hit != null && hit.getHitPosition() != null
+                && hit.getHitPosition().distance(eye.toVector()) < along - 1.0) {
+            return false;
+        }
+        return true;
+    }
+
+    private double interactionReach(Player player) {
+        AttributeInstance instance = player.getAttribute(Attribute.ENTITY_INTERACTION_RANGE);
+        double range = instance != null ? instance.getValue() : 3.0;
+        return Math.max(3.0, range) + swingReachBuffer;
     }
 
     private Team resolveTeam(Player player) {

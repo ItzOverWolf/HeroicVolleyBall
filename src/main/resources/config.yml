@@ -60,6 +60,22 @@ ball:
     catch-height: 3.0
     # Ticks the shield is unusable after a deflect or catch (20 ticks = 1 second).
     cooldown: 100
+  # Hit detection fallback for fast-falling balls. When the client and the
+  # server disagree about where the ball is, the vanilla attack packet can
+  # miss even though you clearly clicked the ball you saw. an arm swing whose
+  # crosshair ray reaches the server-side ball then counts as the hit -
+  # identical tools, cooldowns, touch limits and penalties apply, and it is
+  # deduplicated against the real attack so one click = one hit.
+  hit:
+    # Master switch for the swing fallback above.
+    swing-fallback: true
+    # Extra reach (blocks) added to your entity interaction range for the
+    # fallback. The game's tools.reach-bonus applies on top of this.
+    swing-reach-buffer: 0.5
+    # How much of the ball's per-tick speed (0 = none, 1 = full, capped at
+    # 4 blocks) is added to the aim tolerance, so swinging where you SAW the
+    # ball still counts when the ball has dropped since.
+    swing-speed-tolerance: 1.0
   # Fraction of downward speed kept as a bounce when the ball lands (0 = none).
   bounce: 0.3
   # Ticks to wait after the ball lands before the point is reset to a serve.
