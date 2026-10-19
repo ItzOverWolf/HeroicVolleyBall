@@ -7,7 +7,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 import com.destroystokyo.paper.profile.PlayerProfile;
 import com.destroystokyo.paper.profile.ProfileProperty;
-import com.viaversion.viaversion.api.Via;
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
 import me.heroicstudios.heroicvolleyball.arena.Arena;
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
@@ -46,7 +45,10 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.Transformation;
 import org.bukkit.util.Vector;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 import org.jetbrains.annotations.Nullable;
 
 public final class BallManager {
@@ -54,20 +56,18 @@ public final class BallManager {
     private static final double COLLISION_STEP = 0.1;
 
     /**
-     * The sulfur cube mob only exists on newer Minecraft versions. Checked at
-     * runtime so the plugin can fall back to an invisible slime hitbox on older
-     * servers without ever linking the missing class.
+     * Only used to recognise sulfur cube ghosts saved to disk by older builds
+     * of this plugin during the startup sweep - the ball itself never uses the
+     * cube anymore.
      */
     private static final boolean SULFUR_CUBE_SUPPORTED = classExists("org.bukkit.entity.SulfurCube");
 
     /**
-     * Optional ViaVersion hook: lets a new server tell which clients are too
-     * old to render a sulfur cube so they can be shown the ItemDisplay twin.
+     * Rendered height of a player head in an ItemDisplay at scale 1 (the head
+     * block model is half a block tall). The display's scale factor is derived
+     * from this so the visible head always matches the physics ball height.
      */
-    private static final boolean VIA_AVAILABLE = classExists("com.viaversion.viaversion.api.Via");
-
-    /** Network protocol of 1.21.9 - the first release that knows the sulfur cube. */
-    private static final int SULFUR_CUBE_PROTOCOL = 773;
+    private static final double HEAD_BASE_SIZE = 0.5;
 
     private static boolean classExists(String name) {
         try {
@@ -123,7 +123,6 @@ public final class BallManager {
     private boolean touchPenalty = true;
     private boolean showName = true;
     private boolean pickupEnabled = true;
-    private boolean sulfurCube = true;
     private Material ballMaterial = Material.GRAY_WOOL;
     private String ballTexture = "";
     private double shovelWooden = 0.6;
@@ -181,7 +180,6 @@ public final class BallManager {
         this.touchPenalty = config.getBoolean("game.opponent-touch-penalty", true);
         this.showName = config.getBoolean("ball.show-name", true);
         this.pickupEnabled = config.getBoolean("ball.pickup-enabled", true);
-        this.sulfurCube = config.getBoolean("ball.sulfur-cube", true);
         this.ballMaterial = parseBallMaterial(config.getString("ball.material", "GRAY_WOOL"));
         this.ballTexture = config.getString("ball.texture", "");
         this.shovelWooden = config.getDouble("ball.power.shovel.wooden", 0.6);
@@ -411,39 +409,25 @@ public final class BallManager {
             return;
         }
 
-        if (useSulfurCube()) {
-            this.ball = world.spawn(location, SulfurCube.class, CreatureSpawnEvent.SpawnReason.CUSTOM, cube -> {
-                cube.setSize(size);
-                cube.setWander(false);
-                cube.setAware(false);
-                cube.setAI(false);
-                cube.setGravity(false);
-                // Non-persistent: never written to the world save, so a crash
-                // or force-stop can never leave a ghost ball behind.
-                cube.setPersistent(false);
-                cube.setSilent(true);
-                cube.setMaximumNoDamageTicks(0);
-                cube.setNoDamageTicks(0);
-                cube.setInvisible(true);
-                cube.getPersistentDataContainer().set(ballKey, PersistentDataType.BOOLEAN, true);
-            });
-        } else {
-            // Older servers have no sulfur cube mob: use an invisible slime as
-            // the pure hitbox. It carries no equipment; the ItemDisplay shows
-            // the ball item on top of it, so it looks identical everywhere.
-            this.ball = world.spawn(location, Slime.class, CreatureSpawnEvent.SpawnReason.CUSTOM, slime -> {
-                slime.setSize(Math.max(1, size));
-                slime.setAware(false);
-                slime.setAI(false);
-                slime.setGravity(false);
-                slime.setPersistent(false);
-                slime.setSilent(true);
-                slime.setMaximumNoDamageTicks(0);
-                slime.setNoDamageTicks(0);
-                slime.setInvisible(true);
-                slime.getPersistentDataContainer().set(ballKey, PersistentDataType.BOOLEAN, true);
-            });
-        }
+        // The ball is an invisible slime used purely as the physics/click
+        // hitbox - it resizes with ball.size, exists on every supported
+        // version, and can never render wrong because it never renders at all.
+        // The floating player head ItemDisplay above it is the ball everyone
+        // sees on every client version.
+        this.ball = world.spawn(location, Slime.class, CreatureSpawnEvent.SpawnReason.CUSTOM, slime -> {
+            slime.setSize(Math.max(1, size));
+            slime.setAware(false);
+            slime.setAI(false);
+            slime.setGravity(false);
+            // Non-persistent: never written to the world save, so a crash
+            // or force-stop can never leave a ghost ball behind.
+            slime.setPersistent(false);
+            slime.setSilent(true);
+            slime.setMaximumNoDamageTicks(0);
+            slime.setNoDamageTicks(0);
+            slime.setInvisible(true);
+            slime.getPersistentDataContainer().set(ballKey, PersistentDataType.BOOLEAN, true);
+        });
 
         this.current = location.clone();
         this.motion = new Vector();
@@ -691,7 +675,10 @@ public final class BallManager {
         wasOnGround = onGround;
         ball.teleport(current);
         if (ballDisplay != null && ballDisplay.isValid()) {
-            ballDisplay.teleport(current);
+            Location displayAt = displayLocation();
+            if (displayAt != null) {
+                ballDisplay.teleport(displayAt);
+            }
         }
     }
 
@@ -914,82 +901,16 @@ public final class BallManager {
         applyBallAppearance();
     }
 
-    /**
-     * True when the ball should be a real sulfur cube: the config asks for one
-     * and this Minecraft version actually has the mob. Otherwise the invisible
-     * slime fallback is used.
-     */
-    private boolean useSulfurCube() {
-        return sulfurCube && SULFUR_CUBE_SUPPORTED;
-    }
-
-    /**
-     * Per-client ball rendering. The floating ItemDisplay head IS the ball for
-     * every player on every version (1.21+ all render display entities) and is
-     * never hidden from anyone, so the ball can never turn invisible. The mob
-     * underneath is a pure invisible hitbox; it is additionally hidden from
-     * clients below 1.21.9 (detected via ViaVersion) so a protocol mapping can
-     * never replace the unknown sulfur cube entity with a visible fallback mob.
-     * Those clients hit the display twin instead (isBall matches it).
-     */
-    public void applyBallVisibility(Player player) {
-        if (ball == null || !ball.isValid()) {
-            return;
-        }
-        if (ballDisplay != null) {
-            player.showEntity(plugin, ballDisplay);
-        }
-        if (useSulfurCube() && !clientSupportsSulfurCube(player)) {
-            player.hideEntity(plugin, ball);
-        } else {
-            player.showEntity(plugin, ball);
-        }
-    }
-
-    public void applyBallVisibilityToAll() {
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            applyBallVisibility(player);
-        }
-    }
-
-    private boolean clientSupportsSulfurCube(Player player) {
-        if (!VIA_AVAILABLE) {
-            return true;
-        }
-        try {
-            int protocol = Via.getAPI().getPlayerVersion(player.getUniqueId());
-            // Unknown/negative = assume modern so the cube is never hidden by mistake.
-            return protocol < 0 || protocol >= SULFUR_CUBE_PROTOCOL;
-        } catch (Throwable t) {
-            return true;
-        }
-    }
-
     private void applyBallAppearance() {
         if (ball == null || !ball.isValid()) {
             return;
         }
 
-        ItemStack item = ballItem(tintedBallMaterial());
-
-        // The mob underneath is always an invisible physics hitbox with no
-        // equipment; the floating head display is the ball everyone sees.
+        // The slime underneath is always an invisible physics hitbox; the
+        // floating head display is the ball everyone sees on every client
+        // version - there is no per-client visibility handling anymore.
         ball.setInvisible(true);
-        showDisplay(item);
-        applyBallVisibilityToAll();
-    }
-
-    /**
-     * Warns an op on login when the config asks for a sulfur cube but this
-     * server version does not have the mob (older server or a downgrade) - the
-     * ball silently uses the slime hitbox fallback, so the owner can set
-     * ball.sulfur-cube: false to match reality.
-     */
-    public void notifyVersionMismatch(Player player) {
-        if (!player.isOp() || !sulfurCube || SULFUR_CUBE_SUPPORTED) {
-            return;
-        }
-        plugin.getMessages().send(player, "ball.sulfur-cube-unsupported");
+        showDisplay(ballItem(tintedBallMaterial()));
     }
 
     private Material tintedBallMaterial() {
@@ -1004,15 +925,46 @@ public final class BallManager {
         return material;
     }
 
+    /**
+     * Where the visible head belongs. A display is centred on its own
+     * position, so it is lifted by half its rendered height - with the scale
+     * below that is half the physics ball height - which puts the head's
+     * bottom exactly on the ground line (instead of half the ball clipping
+     * below the floor) and its top right under the name hologram.
+     */
+    private @Nullable Location displayLocation() {
+        Location base = current != null ? current : (ball != null ? ball.getLocation() : null);
+        if (base == null) {
+            return null;
+        }
+        return base.clone().add(0.0, ballHeight() / 2.0, 0.0);
+    }
+
+    /**
+     * Scales the player head so its rendered height equals the physics ball
+     * height - this is what makes ball.size affect the visible ball, not just
+     * the invisible hitbox.
+     */
+    private Transformation headTransformation() {
+        float scale = (float) (ballHeight() / HEAD_BASE_SIZE);
+        return new Transformation(new Vector3f(), new Quaternionf(),
+                new Vector3f(scale, scale, scale), new Quaternionf());
+    }
+
     private void showDisplay(ItemStack item) {
         if (ball == null || !ball.isValid()) {
             return;
         }
         if (ballDisplay != null && ballDisplay.isValid()) {
             ballDisplay.setItemStack(item);
+            ballDisplay.setTransformation(headTransformation());
             return;
         }
-        ballDisplay = ball.getWorld().spawn(ball.getLocation(), ItemDisplay.class,
+        Location spawnAt = displayLocation();
+        if (spawnAt == null) {
+            return;
+        }
+        ballDisplay = ball.getWorld().spawn(spawnAt, ItemDisplay.class,
                 CreatureSpawnEvent.SpawnReason.CUSTOM, display -> {
                     display.setItemStack(item);
                     display.setPersistent(false);
@@ -1023,6 +975,7 @@ public final class BallManager {
                     display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.FIXED);
                     display.setCustomNameVisible(false);
                     display.getPersistentDataContainer().set(ballKey, PersistentDataType.BOOLEAN, true);
+                    display.setTransformation(headTransformation());
                     // Glide over one tick so the twin tracks the ball smoothly.
                     display.setTeleportDuration(1);
                 });

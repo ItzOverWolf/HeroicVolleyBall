@@ -11,8 +11,9 @@
 
 # Ball physics and rule settings. Reload live with /volleyreload.
 ball:
-  # Size of the ball's invisible hitbox mob (sulfur cube or slime fallback),
-  # in blocks (1 = small, 5 = default).
+  # Ball size in blocks. Scales BOTH the invisible slime hitbox and the
+  # visible player head (the head always matches the hitbox height), so the
+  # ball you see and the ball you hit are the same size. 5 = default.
   size: 5
   # Maximum number of touches a team gets per possession.
   max-touches: 3
@@ -74,15 +75,6 @@ ball:
   # not been hit), and only once per serve - after placing it cannot be picked
   # up again until the next point resets the ball.
   pickup-enabled: true
-  # If true (default), the ball's hitbox is a vanilla sulfur cube on servers
-  # that have the mob (26.2+). The cube itself is always invisible - the
-  # floating player head above it is what every player sees as the ball, on
-  # every client version including old clients connected through ViaVersion,
-  # so old players never see an invisible ball. On older servers (or after a
-  # downgrade) the plugin automatically falls back to an invisible slime with
-  # the same hitbox size and notifies ops on login so you can set this to
-  # false. Works live with /volleyreload. Requires no extra setup for players.
-  sulfur-cube: true
   # What the ball (and the item you pick up) looks like. Any block or item
   # material name works (for example GRAY_WOOL, SLIME_BALL, DIAMOND, GLOWSTONE,
   # PLAYER_HEAD). If the material is a wool (_WOOL), the ball is coloured by

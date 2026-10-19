@@ -72,7 +72,6 @@ ball:
   pickup-denied: "<red>The ball can only be picked up before the round starts"
   pickup-backrow: "<red>You must be in the back row to pick up the ball"
   place-outside: "<red>The ball must be placed inside your team's area"
-  sulfur-cube-unsupported: "<yellow>The Sulfur Cube mob does not exist on this server version, so the ball is using the invisible slime fallback. Set <white>ball.sulfur-cube: false</white> in config.yml to silence this notice."
 
 score:
   point: "{team} <white>scores!  <white>Score: {red} - {blue}"

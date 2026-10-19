@@ -17,16 +17,11 @@ repositories {
         name = "placeholderapi"
         url = "https://repo.extendedclip.com/releases/"
     }
-    maven {
-        name = "viaversion"
-        url = "https://repo.viaversion.com"
-    }
 }
 
 dependencies {
     compileOnly "io.papermc.paper:paper-api:26.3.build.175-stable"
     compileOnly "me.clip:placeholderapi:2.12.3"
-    compileOnly "com.viaversion:viaversion-api:5.12.1"
 }
 
 // paper-api 26.3 is a Java 25 library (class file 69): the compiler MUST run

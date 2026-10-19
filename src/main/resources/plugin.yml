@@ -4,7 +4,7 @@ main: me.heroicstudios.heroicvolleyball.HeroicVolleyBall
 api-version: '1.21'
 description: A Haikyuu inspired volleyball plugin
 authors: [HeroicStudios]
-softdepend: [PlaceholderAPI, ViaVersion]
+softdepend: [PlaceholderAPI]
 
 commands:
   volleywand:
