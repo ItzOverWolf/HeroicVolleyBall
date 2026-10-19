@@ -126,14 +126,14 @@ public final class CoinFlipGui implements Listener {
         inventory.setItem(CENTER, wool(result));
 
         Component title = messages.get("game.coin-flip-title");
-        Component subtitle = messages.get("game.coin-flip-result", "team", Messages.teamDisplay(session.getArena(), result));
+        Component subtitle = messages.get("game.coin-flip-result", "team", session.teamDisplay(result));
         for (Player player : viewers) {
             if (player != null && player.isOnline()) {
                 player.showTitle(Messages.noFade(title, subtitle));
                 player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.4f);
             }
         }
-        session.broadcast(messages.getPrefixed("game.coin-flip-broadcast", "team", Messages.teamDisplay(session.getArena(), result)));
+        session.broadcast(messages.getPrefixed("game.coin-flip-broadcast", "team", session.teamDisplay(result)));
 
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (gen != generation) {

@@ -1,7 +1,6 @@
 package me.heroicstudios.heroicvolleyball.score;
 
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
-import me.heroicstudios.heroicvolleyball.arena.Arena;
 import me.heroicstudios.heroicvolleyball.arena.Side;
 import me.heroicstudios.heroicvolleyball.game.Countdown;
 import me.heroicstudios.heroicvolleyball.game.GameSession;
@@ -20,11 +19,13 @@ import org.bukkit.scoreboard.Score;
 import org.bukkit.scoreboard.Scoreboard;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 public final class ScoreManager {
 
     private final HeroicVolleyBall plugin;
     private final GameSession session;
+    private Consumer<Side> onMatchEnd;
 
     private int pointsPerSet = 25;
     private int setsToWin = 2;
@@ -78,6 +79,15 @@ public final class ScoreManager {
         return roundTransition;
     }
 
+    /** Overrides the config sets-to-win for this match (used by team duels). */
+    public void setSetsToWin(int setsToWin) {
+        this.setsToWin = Math.max(1, setsToWin);
+    }
+
+    public void setOnMatchEnd(Consumer<Side> onMatchEnd) {
+        this.onMatchEnd = onMatchEnd;
+    }
+
     public void loadConfig() {
         this.pointsPerSet = Math.max(1, plugin.getConfig().getInt("game.points-per-set", 25));
         this.setsToWin = Math.max(1, plugin.getConfig().getInt("game.sets-to-win", 2));
@@ -109,9 +119,8 @@ public final class ScoreManager {
 
     public void redraw() {
         scoreLine.customName(Component.text("Score: " + redPoints + " - " + bluePoints, NamedTextColor.WHITE));
-        Arena arena = session.getArena();
-        redLine.customName(Component.text(arena.teamName(Side.RED) + ": " + redSets, arena.teamColor(Side.RED)));
-        blueLine.customName(Component.text(arena.teamName(Side.BLUE) + ": " + blueSets, arena.teamColor(Side.BLUE)));
+        redLine.customName(Component.text(session.teamName(Side.RED) + ": " + redSets, session.teamColor(Side.RED)));
+        blueLine.customName(Component.text(session.teamName(Side.BLUE) + ": " + blueSets, session.teamColor(Side.BLUE)));
     }
 
     public void apply(Player player) {
@@ -149,7 +158,7 @@ public final class ScoreManager {
         }
 
         Messages messages = plugin.getMessages();
-        String teamTag = Messages.teamDisplay(session.getArena(), side);
+        String teamTag = session.teamDisplay(side);
         String red = String.valueOf(redPoints);
         String blue = String.valueOf(bluePoints);
 
@@ -186,7 +195,7 @@ public final class ScoreManager {
         bluePoints = 0;
 
         Messages messages = plugin.getMessages();
-        String teamTag = Messages.teamDisplay(session.getArena(), side);
+        String teamTag = session.teamDisplay(side);
         String redSetsText = String.valueOf(redSets);
         String blueSetsText = String.valueOf(blueSets);
 
@@ -220,7 +229,12 @@ public final class ScoreManager {
             playTeamSound(side, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
             session.pauseBall();
             GameSession target = session;
-            Bukkit.getScheduler().runTask(plugin, () -> target.getManager().stop(target));
+            Consumer<Side> callback = onMatchEnd;
+            if (callback != null) {
+                Bukkit.getScheduler().runTask(plugin, () -> callback.accept(side));
+            } else {
+                Bukkit.getScheduler().runTask(plugin, () -> target.getManager().stop(target));
+            }
         } else {
             startRoundBreak(side);
         }
@@ -244,7 +258,7 @@ public final class ScoreManager {
                     if (broadcastPoints) {
                         session.broadcast(messages.get("game.round-start",
                                 "round", String.valueOf(nextRound),
-                                "team", Messages.teamDisplay(session.getArena(), nextServer)));
+                                "team", session.teamDisplay(nextServer)));
                     }
                     session.startNextRound(nextServer);
                 },

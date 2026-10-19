@@ -2,27 +2,33 @@ package me.heroicstudios.heroicvolleyball;
 
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
 import me.heroicstudios.heroicvolleyball.ball.BallListener;
-import me.heroicstudios.heroicvolleyball.command.PartyCommand;
 import me.heroicstudios.heroicvolleyball.command.RestartGameCommand;
 import me.heroicstudios.heroicvolleyball.command.SetArenaCommand;
 import me.heroicstudios.heroicvolleyball.command.SetBackrowCommand;
 import me.heroicstudios.heroicvolleyball.command.SetBallSpawnCommand;
 import me.heroicstudios.heroicvolleyball.command.SpawnBallCommand;
+import me.heroicstudios.heroicvolleyball.command.DuelCommand;
 import me.heroicstudios.heroicvolleyball.command.StartGameCommand;
 import me.heroicstudios.heroicvolleyball.command.StopGameCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyArenaCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyGiveCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyMusicCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyReloadCommand;
+import me.heroicstudios.heroicvolleyball.command.VolleyTeamCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyWandCommand;
+import me.heroicstudios.heroicvolleyball.game.ArenaPickerGui;
+import me.heroicstudios.heroicvolleyball.duel.DuelManager;
 import me.heroicstudios.heroicvolleyball.game.SessionManager;
 import me.heroicstudios.heroicvolleyball.game.SetupGui;
+import me.heroicstudios.heroicvolleyball.gui.GuiConfig;
 import me.heroicstudios.heroicvolleyball.gui.GuiListener;
+import me.heroicstudios.heroicvolleyball.gui.team.TeamGuiListener;
 import me.heroicstudios.heroicvolleyball.hook.VolleyballPlaceholders;
+import me.heroicstudios.heroicvolleyball.util.ChatInputManager;
 import me.heroicstudios.heroicvolleyball.listener.ArenaListener;
 import me.heroicstudios.heroicvolleyball.listener.SessionListener;
 import me.heroicstudios.heroicvolleyball.message.Messages;
-import me.heroicstudios.heroicvolleyball.party.PartyManager;
+import me.heroicstudios.heroicvolleyball.team.TeamManager;
 import me.heroicstudios.heroicvolleyball.tool.ToolListener;
 import me.heroicstudios.heroicvolleyball.tool.ToolManager;
 import me.heroicstudios.heroicvolleyball.util.ConfigDefaults;
@@ -37,9 +43,13 @@ public final class HeroicVolleyBall extends JavaPlugin {
     private WandManager wandManager;
     private GuiListener guiListener;
     private ToolManager toolManager;
-    private PartyManager partyManager;
     private SessionManager sessionManager;
+    private TeamManager teamManager;
+    private DuelManager duelManager;
+    private GuiConfig guiConfig;
+    private ChatInputManager chatInput;
     private SetupGui setupGui;
+    private ArenaPickerGui arenaPickerGui;
     private Messages messages;
 
     @Override
@@ -48,13 +58,18 @@ public final class HeroicVolleyBall extends JavaPlugin {
         syncConfigDefaults();
 
         this.messages = new Messages(this);
+        this.guiConfig = new GuiConfig(this);
         this.arenaManager = new ArenaManager(this);
         this.wandManager = new WandManager(this);
         this.guiListener = new GuiListener(arenaManager, messages);
         this.toolManager = new ToolManager(this);
-        this.partyManager = new PartyManager(this);
         this.sessionManager = new SessionManager(this, arenaManager, toolManager);
-        this.setupGui = new SetupGui(this, sessionManager, partyManager);
+        this.teamManager = new TeamManager(this);
+        this.duelManager = new DuelManager(this, sessionManager);
+        this.chatInput = new ChatInputManager(this);
+        this.chatInput.start();
+        this.setupGui = new SetupGui(this, sessionManager);
+        this.arenaPickerGui = new ArenaPickerGui(this, arenaManager, sessionManager, setupGui);
 
         // Sweep ball entities left in the world save by older plugin builds.
         sessionManager.purgeGhosts();
@@ -66,6 +81,8 @@ public final class HeroicVolleyBall extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new BallListener(sessionManager, toolManager), this);
         getServer().getPluginManager().registerEvents(new SessionListener(this, sessionManager), this);
         getServer().getPluginManager().registerEvents(setupGui, this);
+        getServer().getPluginManager().registerEvents(arenaPickerGui, this);
+        getServer().getPluginManager().registerEvents(new TeamGuiListener(this, chatInput), this);
 
         if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
             new VolleyballPlaceholders(this).register();
@@ -99,20 +116,13 @@ public final class HeroicVolleyBall extends JavaPlugin {
         }
 
         register("spawnball", new SpawnBallCommand(sessionManager, arenaManager, messages));
-        register("startgame", new StartGameCommand(partyManager, setupGui, sessionManager, arenaManager, messages));
+        register("startgame", new StartGameCommand(setupGui, arenaPickerGui, sessionManager, arenaManager, messages));
         register("stopgame", new StopGameCommand(sessionManager, arenaManager, messages));
         register("restartgame", new RestartGameCommand(sessionManager, arenaManager, messages));
         register("volleyreload", new VolleyReloadCommand(this));
         register("volleyarena", new VolleyArenaCommand(arenaManager, sessionManager, messages));
-
-        PartyCommand partyCommand = new PartyCommand(partyManager, messages);
-        for (String name : new String[]{"partycreate", "partyinvite", "partyleave", "partydisband"}) {
-            PluginCommand party = getCommand(name);
-            if (party != null) {
-                party.setExecutor(partyCommand);
-                party.setTabCompleter(partyCommand);
-            }
-        }
+        register("volleyteam", new VolleyTeamCommand(teamManager, sessionManager, messages));
+        register("teamduel", new DuelCommand(duelManager, teamManager, messages));
 
         VolleyMusicCommand volleyMusicCommand = new VolleyMusicCommand(sessionManager, arenaManager, messages);
         PluginCommand volleyMusic = getCommand("volleymusic");
@@ -120,6 +130,11 @@ public final class HeroicVolleyBall extends JavaPlugin {
             volleyMusic.setExecutor(volleyMusicCommand);
             volleyMusic.setTabCompleter(volleyMusicCommand);
         }
+
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            teamManager.tick();
+            duelManager.tick();
+        }, 40L, 20L);
 
         VolleyGiveCommand volleyGiveCommand = new VolleyGiveCommand(toolManager, messages);
         PluginCommand volleyGive = getCommand("volleygive");
@@ -153,6 +168,15 @@ public final class HeroicVolleyBall extends JavaPlugin {
         if (sessionManager != null) {
             isolateShutdown("sessions", sessionManager::shutdown);
         }
+        if (duelManager != null) {
+            isolateShutdown("duels", duelManager::shutdown);
+        }
+        if (chatInput != null) {
+            isolateShutdown("chat input", chatInput::stop);
+        }
+        if (teamManager != null) {
+            isolateShutdown("teams", teamManager::shutdown);
+        }
         if (arenaManager != null) {
             isolateShutdown("arena save", arenaManager::saveAll);
             isolateShutdown("arena io", arenaManager::shutdown);
@@ -184,12 +208,20 @@ public final class HeroicVolleyBall extends JavaPlugin {
         return toolManager;
     }
 
-    public PartyManager getPartyManager() {
-        return partyManager;
-    }
-
     public SessionManager getSessionManager() {
         return sessionManager;
+    }
+
+    public TeamManager getTeamManager() {
+        return teamManager;
+    }
+
+    public DuelManager getDuelManager() {
+        return duelManager;
+    }
+
+    public GuiConfig getGuiConfig() {
+        return guiConfig;
     }
 
     public SetupGui getSetupGui() {

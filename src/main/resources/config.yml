@@ -180,10 +180,26 @@ scoreboard:
   # match ends.
   viewers: true
 
-# Party settings for multiplayer games.
-party:
-  # Maximum number of players a party can hold (must be even to start a game).
-  max-size: 12
+# Persistent team settings. Teams are storied in plugins/HeroicVolleyBall/teams.yml.
+team:
+  # Maximum players on a roster. Hard-capped at 12 regardless of this value.
+  max-roster: 6
+  # Seconds an invite stays valid before it expires.
+  invite-expiry-seconds: 60
+  # Default team colour (hex) for newly created teams.
+  default-color: "#FF8A00"
+  # Seconds a chat input prompt (team name, tag, custom hex) stays open.
+  input-timeout-seconds: 30
+
+# Team duel settings.
+duel:
+  # Largest best-of value allowed when challenging (1, 3 or 5). 1 = single set.
+  max-sets: 5
+  # Seconds a challenge stays valid before it expires.
+  challenge-expiry-seconds: 60
+  # Seconds a match pauses waiting for a disconnected player to rejoin before
+  # their team forfeits.
+  disconnect-grace-seconds: 60
 
 # Volleyball tool settings.
 tools:
@@ -212,3 +228,6 @@ session:
   # Save and restore a player's inventory/effects when they walk out of the
   # arena's court/backrow regions.
   restore-on-leave: false
+  # Maximum number of matches that may run at the same time across all arenas.
+  # -1 means no limit.
+  max-concurrent: -1

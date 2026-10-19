@@ -55,22 +55,16 @@ commands:
     description: Plays Note Block Studio music for the game
     usage: /volleymusic <start|stop|list|reload> [song]
     permission: heroicvolleyball.volleymusic
-  partycreate:
-    description: Creates a party
-    usage: /partycreate
-    permission: heroicvolleyball.party
-  partyinvite:
-    description: Invites a player to your party
-    usage: /partyinvite <player>
-    permission: heroicvolleyball.party
-  partyleave:
-    description: Leaves your current party
-    usage: /partyleave
-    permission: heroicvolleyball.party
-  partydisband:
-    description: Disbands your party (leader only)
-    usage: /partydisband
-    permission: heroicvolleyball.party
+  volleyteam:
+    description: Manage your volleyball team
+    usage: /volleyteam <create|invite|accept|deny|leave|kick|transfer|disband|rename|color|info|top|chat> ...
+    aliases: [vteam, vt]
+    permission: heroicvolleyball.team
+  teamduel:
+    description: Challenge another team to a duel
+    usage: /teamduel <team> <sets>
+    aliases: [vduel]
+    permission: heroicvolleyball.team.duel
 
 permissions:
   heroicvolleyball.volleywand:
@@ -109,6 +103,9 @@ permissions:
   heroicvolleyball.volleymusic:
     description: Allows use of /volleymusic
     default: op
-  heroicvolleyball.party:
-    description: Allows use of the party commands
+  heroicvolleyball.team:
+    description: Allows use of the team commands
+    default: true
+  heroicvolleyball.team.duel:
+    description: Allows challenging other teams to a duel
     default: true

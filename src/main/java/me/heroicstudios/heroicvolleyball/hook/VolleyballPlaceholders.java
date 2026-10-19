@@ -77,7 +77,7 @@ public final class VolleyballPlaceholders extends PlaceholderExpansion {
                 return ball != null ? ball.getStateName() : "Idle";
             case "possession":
                 return ball != null && ball.getPossession() != null
-                        ? (session != null ? session.getArena().teamName(ball.getPossession())
+                        ? (session != null ? session.teamName(ball.getPossession())
                                 : ball.getPossession().getDisplayName())
                         : "None";
             case "team":
@@ -133,7 +133,7 @@ public final class VolleyballPlaceholders extends PlaceholderExpansion {
             return "None";
         }
         Side side = session.getSide(online);
-        return side != null ? session.getArena().teamName(side) : "None";
+        return side != null ? session.teamName(side) : "None";
     }
 
     private String positionOf(OfflinePlayer player, @Nullable GameSession session) {

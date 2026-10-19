@@ -96,6 +96,14 @@ public final class Messages {
         sender.sendMessage(get(key, placeholders));
     }
 
+    public void broadcast(String key, String... placeholders) {
+        plugin.getServer().broadcast(getPrefixed(key, placeholders));
+    }
+
+    public void broadcastRaw(String key, String... placeholders) {
+        plugin.getServer().broadcast(get(key, placeholders));
+    }
+
     public void actionBar(Player player, String key, String... placeholders) {
         player.sendActionBar(get(key, placeholders));
     }

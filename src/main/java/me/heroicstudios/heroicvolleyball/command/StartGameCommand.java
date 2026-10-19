@@ -4,11 +4,10 @@ import java.util.List;
 
 import me.heroicstudios.heroicvolleyball.arena.Arena;
 import me.heroicstudios.heroicvolleyball.arena.ArenaManager;
+import me.heroicstudios.heroicvolleyball.game.ArenaPickerGui;
 import me.heroicstudios.heroicvolleyball.game.SessionManager;
 import me.heroicstudios.heroicvolleyball.game.SetupGui;
 import me.heroicstudios.heroicvolleyball.message.Messages;
-import me.heroicstudios.heroicvolleyball.party.Party;
-import me.heroicstudios.heroicvolleyball.party.PartyManager;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -19,16 +18,16 @@ import org.jetbrains.annotations.Nullable;
 
 public final class StartGameCommand implements CommandExecutor, TabCompleter {
 
-    private final PartyManager partyManager;
     private final SetupGui setupGui;
+    private final ArenaPickerGui pickerGui;
     private final SessionManager sessionManager;
     private final ArenaManager arenaManager;
     private final Messages messages;
 
-    public StartGameCommand(PartyManager partyManager, SetupGui setupGui, SessionManager sessionManager,
+    public StartGameCommand(SetupGui setupGui, ArenaPickerGui pickerGui, SessionManager sessionManager,
                             ArenaManager arenaManager, Messages messages) {
-        this.partyManager = partyManager;
         this.setupGui = setupGui;
+        this.pickerGui = pickerGui;
         this.sessionManager = sessionManager;
         this.arenaManager = arenaManager;
         this.messages = messages;
@@ -36,73 +35,67 @@ public final class StartGameCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
-        Arena arena = resolve(sender, args.length >= 1 ? args[0] : null);
-        if (arena == null) {
-            messages.send(sender, "arena.none");
+        if (args.length >= 1 && !args[0].isBlank()) {
+            Arena arena = arenaManager.get(args[0]);
+            if (arena == null) {
+                messages.send(sender, "arena.not-found", "arena", args[0]);
+                return true;
+            }
+            start(sender, arena);
             return true;
         }
 
+        List<Arena> free = sessionManager.freeArenas();
+        if (free.isEmpty()) {
+            if (sessionManager.atCapacity()) {
+                messages.send(sender, "session.capacity");
+            } else {
+                messages.send(sender, "session.no-free");
+            }
+            return true;
+        }
+        if (free.size() > 1 && sender instanceof Player player) {
+            pickerGui.open(player);
+            return true;
+        }
+        start(sender, free.get(0));
+        return true;
+    }
+
+    private void start(CommandSender sender, Arena arena) {
         if (!arena.isEnabled()) {
             messages.send(sender, "game.arena-disabled", "arena", arena.getName());
-            return true;
+            return;
         }
-
-        if (sessionManager.hasLiveGame(arena)) {
+        if (sessionManager.isOccupied(arena)) {
             messages.send(sender, "game.already-running", "arena", arena.getName());
-            return true;
+            return;
+        }
+        if (!arena.isComplete()) {
+            messages.send(sender, "game.setup-missing");
+            messages.send(sender, "arena.still-incomplete", "arena", arena.getName());
+            return;
+        }
+        if (sessionManager.atCapacity()) {
+            messages.send(sender, "session.capacity");
+            return;
         }
 
         if (sender instanceof Player player) {
             if (sessionManager.get(player) != null) {
                 messages.send(player, "game.already-in-game");
-                return true;
+                return;
             }
-            if (!arena.isComplete()) {
-                messages.send(player, "game.setup-missing");
-                messages.send(player, "arena.still-incomplete", "arena", arena.getName());
-                return true;
-            }
-            Party party = partyManager.getParty(player);
-            if (party != null) {
-                if (party.size() < 2 || party.size() % 2 != 0) {
-                    messages.send(sender, "game.party-needs-even");
-                    return true;
-                }
-                setupGui.open(player, arena);
-                messages.send(sender, "game.party-choose");
-                return true;
-            }
-
             setupGui.openSolo(player, arena);
             messages.send(sender, "game.solo-choose");
-            return true;
-        }
-
-        if (!arena.isComplete()) {
-            messages.send(sender, "game.setup-missing");
-            messages.send(sender, "arena.still-incomplete", "arena", arena.getName());
-            return true;
+            return;
         }
 
         if (!sessionManager.startConsole(arena)) {
             messages.send(sender, "game.console-need-position");
-            return true;
+            return;
         }
         messages.send(sender, "game.console-start", "arena", arena.getName());
-        return true;
-    }
-
-    private @Nullable Arena resolve(CommandSender sender, @Nullable String name) {
-        if (name != null && !name.isBlank()) {
-            return arenaManager.get(name);
-        }
-        if (sender instanceof Player player) {
-            Arena arena = arenaManager.arenaAt(player.getLocation());
-            if (arena != null) {
-                return arena;
-            }
-        }
-        return arenaManager.getDefault();
     }
 
     @Override

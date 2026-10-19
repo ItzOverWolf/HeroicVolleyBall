@@ -2,17 +2,11 @@ package me.heroicstudios.heroicvolleyball.game;
 
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
 import me.heroicstudios.heroicvolleyball.arena.Arena;
-import me.heroicstudios.heroicvolleyball.arena.Side;
 import me.heroicstudios.heroicvolleyball.gui.PositionLayout;
-import me.heroicstudios.heroicvolleyball.message.Messages;
-import me.heroicstudios.heroicvolleyball.party.Party;
-import me.heroicstudios.heroicvolleyball.party.PartyManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
-import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -25,63 +19,18 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
 
 public final class SetupGui implements Listener {
 
     private final HeroicVolleyBall plugin;
     private final SessionManager sessionManager;
-    private final PartyManager partyManager;
 
-    public SetupGui(HeroicVolleyBall plugin, SessionManager sessionManager, PartyManager partyManager) {
+    public SetupGui(HeroicVolleyBall plugin, SessionManager sessionManager) {
         this.plugin = plugin;
         this.sessionManager = sessionManager;
-        this.partyManager = partyManager;
-    }
-
-    public void open(Player leader, Arena arena) {
-        Party party = partyManager.getParty(leader);
-        if (party == null) {
-            return;
-        }
-
-        if (arena == null) {
-            plugin.getMessages().send(leader, "arena.not-in-arena");
-            return;
-        }
-        if (!arena.isComplete()) {
-            plugin.getMessages().send(leader, "arena.incomplete", "arena", arena.getName());
-            return;
-        }
-
-        Setup setup = new Setup(arena);
-        for (UUID uuid : party.getMembers()) {
-            Player member = Bukkit.getPlayer(uuid);
-            if (member != null && sessionManager.get(member) != null) {
-                plugin.getMessages().send(member, "game.already-in-game");
-                continue;
-            }
-            setup.players.add(uuid);
-        }
-        if (setup.players.size() < 2 || setup.players.size() % 2 != 0) {
-            plugin.getMessages().send(leader, "game.party-needs-even");
-            return;
-        }
-        setup.maxPerTeam = setup.players.size() / 2;
-
-        for (UUID uuid : setup.players) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null) {
-                openTeamMenu(setup, player);
-            }
-        }
     }
 
     public void openSolo(Player player, Arena arena) {
@@ -97,15 +46,14 @@ public final class SetupGui implements Listener {
             plugin.getMessages().send(player, "arena.incomplete", "arena", arena.getName());
             return;
         }
-        Holder holder = new Holder(new Setup(arena), Stage.SOLO, player.getUniqueId());
+        Holder holder = new Holder(arena);
         Inventory inventory = Bukkit.createInventory(holder, PositionLayout.SIZE, Component.text("Choose your position"));
         holder.inventory = inventory;
-        renderSolo(holder);
+        renderSolo(holder, inventory);
         player.openInventory(inventory);
     }
 
-    private void renderSolo(Holder holder) {
-        Inventory inventory = holder.inventory;
+    private void renderSolo(Holder holder, Inventory inventory) {
         PositionLayout.fillFrame(inventory);
         for (int number = 1; number <= 6; number++) {
             ItemStack item = new ItemStack(Material.WHITE_STAINED_GLASS_PANE);
@@ -114,133 +62,12 @@ public final class SetupGui implements Listener {
                     .decoration(TextDecoration.ITALIC, false)
                     .decoration(TextDecoration.BOLD, true));
             List<Component> lore = new ArrayList<>();
-            lore.add(loreLine("You will stand here on whichever team is up", NamedTextColor.GRAY));
+            lore.add(Component.text("You will stand here on whichever team is up",
+                    NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
             meta.lore(lore);
             item.setItemMeta(meta);
             inventory.setItem(PositionLayout.slot(number), item);
         }
-    }
-
-    private void openTeamMenu(Setup setup, Player player) {
-        Holder holder = new Holder(setup, Stage.TEAM, player.getUniqueId());
-        Inventory inventory = Bukkit.createInventory(holder, PositionLayout.SIZE, Component.text("Choose your team"));
-        holder.inventory = inventory;
-        renderTeam(holder);
-        player.openInventory(inventory);
-    }
-
-    private void openPositionMenu(Setup setup, Player player, Side side) {
-        Holder holder = new Holder(setup, Stage.POSITION, player.getUniqueId());
-        Inventory inventory = Bukkit.createInventory(holder, PositionLayout.SIZE, Component.text("Choose your position"));
-        holder.inventory = inventory;
-        renderPosition(holder, side);
-        player.openInventory(inventory);
-    }
-
-    private void renderTeam(Holder holder) {
-        Inventory inventory = holder.inventory;
-        PositionLayout.fillFrame(inventory);
-        Setup setup = holder.setup;
-        inventory.setItem(11, teamItem(Side.RED, setup));
-        inventory.setItem(15, teamItem(Side.BLUE, setup));
-        inventory.setItem(4, infoItem(setup));
-    }
-
-    private void renderPosition(Holder holder, Side side) {
-        Inventory inventory = holder.inventory;
-        PositionLayout.fillFrame(inventory);
-        Setup setup = holder.setup;
-        for (int number = 1; number <= 6; number++) {
-            inventory.setItem(PositionLayout.slot(number), positionItem(setup, side, number));
-        }
-        inventory.setItem(4, infoItem(setup));
-    }
-
-    private ItemStack teamItem(Side side, Setup setup) {
-        ItemStack item = new ItemStack(side.getWool());
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text(setup.arena.teamName(side) + " Team", setup.arena.teamColor(side))
-                .decoration(TextDecoration.ITALIC, false));
-
-        List<Component> lore = new ArrayList<>();
-        int count = 0;
-        for (Map.Entry<UUID, Side> entry : setup.teams.entrySet()) {
-            if (entry.getValue() == side) {
-                lore.add(loreLine(" - " + nameOf(entry.getKey()), setup.arena.teamColor(side)));
-                count++;
-            }
-        }
-        if (count == 0) {
-            lore.add(loreLine("No players yet", NamedTextColor.DARK_GRAY));
-        }
-        lore.add(loreLine(count + "/" + setup.maxPerTeam + " slots filled", NamedTextColor.GRAY));
-        meta.lore(lore);
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    private ItemStack positionItem(Setup setup, Side side, int number) {
-        ItemStack item = new ItemStack(side.getWool());
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text("Position " + number, setup.arena.teamColor(side))
-                .decoration(TextDecoration.ITALIC, false));
-
-        List<Component> lore = new ArrayList<>();
-        Location location = setup.arena.getPosition(side, number);
-        if (location != null) {
-            lore.add(loreLine("Set at " + location.getBlockX() + ", " + location.getBlockY() + ", "
-                    + location.getBlockZ(), NamedTextColor.GRAY));
-        } else {
-            lore.add(loreLine("Not set yet", NamedTextColor.DARK_GRAY));
-        }
-
-        UUID occupant = occupantOf(setup, side, number);
-        if (occupant != null) {
-            lore.add(loreLine("Taken by " + nameOf(occupant), NamedTextColor.RED));
-        } else {
-            lore.add(loreLine("Click to choose", NamedTextColor.GREEN));
-        }
-        meta.lore(lore);
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    private ItemStack infoItem(Setup setup) {
-        ItemStack item = new ItemStack(Material.PAPER);
-        ItemMeta meta = item.getItemMeta();
-        meta.displayName(Component.text("Game setup", NamedTextColor.GOLD)
-                .decoration(TextDecoration.ITALIC, false));
-
-        List<Component> lore = new ArrayList<>();
-        lore.add(loreLine("Arena: " + setup.arena.getName(), NamedTextColor.WHITE));
-        lore.add(loreLine("Players: " + setup.players.size(), NamedTextColor.WHITE));
-        lore.add(loreLine("Max per team: " + setup.maxPerTeam, NamedTextColor.GRAY));
-        lore.add(loreLine("Pick a team, then a position.", NamedTextColor.GRAY));
-        meta.lore(lore);
-        item.setItemMeta(meta);
-        return item;
-    }
-
-    private Component loreLine(String text, TextColor color) {
-        return Component.text(text, color).decoration(TextDecoration.ITALIC, false);
-    }
-
-    private @Nullable UUID occupantOf(Setup setup, Side side, int number) {
-        for (Map.Entry<UUID, Integer> entry : setup.positions.entrySet()) {
-            if (entry.getValue() == number && setup.teams.get(entry.getKey()) == side) {
-                return entry.getKey();
-            }
-        }
-        return null;
-    }
-
-    private String nameOf(UUID uuid) {
-        Player player = Bukkit.getPlayer(uuid);
-        if (player != null) {
-            return player.getName();
-        }
-        String name = Bukkit.getOfflinePlayer(uuid).getName();
-        return name != null ? name : uuid.toString().substring(0, 8);
     }
 
     @EventHandler
@@ -250,63 +77,24 @@ public final class SetupGui implements Listener {
             return;
         }
         event.setCancelled(true);
-
         if (!(event.getWhoClicked() instanceof Player player) || event.getClickedInventory() != top) {
             return;
         }
-
-        if (holder.stage == Stage.SOLO) {
-            int number = PositionLayout.position(event.getSlot());
-            if (number < 1 || number > 6) {
-                return;
-            }
-            player.closeInventory();
-            if (sessionManager.hasLiveGame(holder.setup.arena)) {
-                plugin.getMessages().send(player, "game.already-running", "arena", holder.setup.arena.getName());
-                return;
-            }
-            sessionManager.startSolo(holder.setup.arena, player, number);
-            plugin.getMessages().send(player, "game.solo-started", "position", String.valueOf(number));
+        int number = PositionLayout.position(event.getSlot());
+        if (number < 1 || number > 6) {
             return;
         }
-
-        Setup setup = holder.setup;
-        if (holder.stage == Stage.TEAM) {
-            Side side = sideAt(event.getSlot());
-            if (side == null) {
-                return;
-            }
-            if (setup.teams.containsKey(player.getUniqueId())) {
-                return;
-            }
-            if (countTeam(setup, side) >= setup.maxPerTeam) {
-                plugin.getMessages().send(player, "game.team-full");
-                return;
-            }
-            setup.teams.put(player.getUniqueId(), side);
-            refreshTeamMenus(setup);
-            openPositionMenu(setup, player, side);
-        } else {
-            Side side = setup.teams.get(player.getUniqueId());
-            if (side == null) {
-                return;
-            }
-            if (setup.positions.containsKey(player.getUniqueId())) {
-                return;
-            }
-            int number = PositionLayout.position(event.getSlot());
-            if (number < 1 || number > 6) {
-                return;
-            }
-            if (occupantOf(setup, side, number) != null) {
-                plugin.getMessages().send(player, "game.position-taken");
-                return;
-            }
-            setup.positions.put(player.getUniqueId(), number);
-            player.closeInventory();
-            plugin.getMessages().send(player, "game.chosen", "position", String.valueOf(number));
-            maybeStart(setup);
+        player.closeInventory();
+        if (sessionManager.isOccupied(holder.arena)) {
+            plugin.getMessages().send(player, "game.already-running", "arena", holder.arena.getName());
+            return;
         }
+        if (sessionManager.atCapacity()) {
+            plugin.getMessages().send(player, "session.capacity");
+            return;
+        }
+        sessionManager.startSolo(holder.arena, player, number);
+        plugin.getMessages().send(player, "game.solo-started", "position", String.valueOf(number));
     }
 
     @EventHandler
@@ -318,147 +106,15 @@ public final class SetupGui implements Listener {
 
     @EventHandler
     public void onClose(InventoryCloseEvent event) {
-        if (!(event.getInventory().getHolder() instanceof Holder holder)) {
-            return;
-        }
-        if (holder.stage != Stage.POSITION) {
-            return;
-        }
-        if (!(event.getPlayer() instanceof Player player)) {
-            return;
-        }
-        Setup setup = holder.setup;
-        Side side = setup.teams.get(player.getUniqueId());
-        if (side == null || setup.positions.containsKey(player.getUniqueId())) {
-            return;
-        }
-        if (setup.teams.size() != setup.players.size() || setup.positions.size() != setup.players.size()) {
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                if (player.isOnline() && !setup.positions.containsKey(player.getUniqueId())) {
-                    openPositionMenu(setup, player, side);
-                }
-            });
-        }
-    }
-
-    private void maybeStart(Setup setup) {
-        if (setup.teams.size() != setup.players.size() || setup.positions.size() != setup.players.size()) {
-            return;
-        }
-
-        if (sessionManager.hasLiveGame(setup.arena)) {
-            for (UUID uuid : setup.players) {
-                Player player = Bukkit.getPlayer(uuid);
-                if (player != null) {
-                    plugin.getMessages().send(player, "game.already-running", "arena", setup.arena.getName());
-                }
-            }
-            return;
-        }
-
-        for (UUID uuid : setup.players) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null && sessionManager.get(player) != null) {
-                plugin.getMessages().send(player, "game.already-in-game");
-                return;
-            }
-        }
-
-        Map<UUID, Side> teams = new LinkedHashMap<>(setup.teams);
-        Map<UUID, Integer> positions = new LinkedHashMap<>(setup.positions);
-
-        for (UUID uuid : setup.players) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null) {
-                player.closeInventory();
-            }
-        }
-
-        sessionManager.start(setup.arena, teams, positions);
-
-        for (UUID uuid : setup.players) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player != null) {
-                plugin.getMessages().send(player, "game.assigned");
-            }
-            Side side = teams.get(uuid);
-            if (side != null) {
-                Player p = Bukkit.getPlayer(uuid);
-                if (p != null) {
-                    String teamTag = Messages.teamDisplay(setup.arena, side);
-                    p.showTitle(Messages.noFade(
-                            plugin.getMessages().get("game.assigned-title", "team", teamTag),
-                            plugin.getMessages().get("game.assigned-subtitle", "team", teamTag)));
-                }
-            }
-        }
-    }
-
-    private void refreshTeamMenus(Setup setup) {
-        for (UUID uuid : setup.players) {
-            Player player = Bukkit.getPlayer(uuid);
-            if (player == null) {
-                continue;
-            }
-            Inventory open = player.getOpenInventory().getTopInventory();
-            if (open.getHolder() instanceof Holder holder
-                    && holder.setup == setup
-                    && holder.stage == Stage.TEAM) {
-                renderTeam(holder);
-                player.updateInventory();
-            }
-        }
-    }
-
-    private int countTeam(Setup setup, Side side) {
-        int count = 0;
-        for (Side value : setup.teams.values()) {
-            if (value == side) {
-                count++;
-            }
-        }
-        return count;
-    }
-
-    private @Nullable Side sideAt(int slot) {
-        if (slot == 11) {
-            return Side.RED;
-        }
-        if (slot == 15) {
-            return Side.BLUE;
-        }
-        return null;
-    }
-
-    private enum Stage {
-        TEAM,
-        POSITION,
-        SOLO
-    }
-
-    private static final class Setup {
-        private final Arena arena;
-        private final Set<UUID> players = new java.util.LinkedHashSet<>();
-        private final Map<UUID, Side> teams = new LinkedHashMap<>();
-        private final Map<UUID, Integer> positions = new LinkedHashMap<>();
-        private int maxPerTeam = 1;
-
-        private Setup(Arena arena) {
-            this.arena = arena;
-        }
+        // no-op: solo setup simply closes
     }
 
     private static final class Holder implements InventoryHolder {
-        private final @Nullable Setup setup;
-        private final Stage stage;
-        @SuppressWarnings("unused")
-        private final UUID viewer;
+        private final Arena arena;
         private Inventory inventory;
 
-        private Holder(@Nullable Setup setup, Stage stage, UUID viewer) {
-            this.setup = setup;
-            this.stage = stage;
-            this.viewer = viewer;
+        private Holder(Arena arena) {
+            this.arena = arena;
         }
 
         @Override

@@ -25,17 +25,50 @@ per team, and rally a sulfur-cube ball using shovels, swords and shields.
 | `/setbackrow <red\|blue> [arena]` | Sets the selected region as a team's back row. The ball can only be picked up and placed there. | `heroicvolleyball.setbackrow` |
 | `/setballspawnpoint <red\|blue> [clear] [arena]` | Saves your current location as the team's ball spawn point (where the ball serves from). | `heroicvolleyball.setballspawnpoint` |
 | `/spawnball [arena]` | Spawns the volleyball, preferring the saved spawn point. | `heroicvolleyball.spawnball` |
-| `/startgame [arena]` | Players: opens the team/position picker. Console: serves the ball at Position 6. | `heroicvolleyball.startgame` |
+| `/startgame [arena]` | Starts a match on a free arena, or opens the arena picker when several are free. Console: serves the ball at Position 6. | `heroicvolleyball.startgame` |
 | `/stopgame [arena]` | Stops the game, removes the ball/music and resets the score. | `heroicvolleyball.stopgame` |
 | `/restartgame [arena]` | Resets the score and respawns the ball at Position 6. | `heroicvolleyball.restartgame` |
 | `/volleyarena <create\|delete\|clone\|rename\|list\|info\|enable\|disable> [name] [name]` | Manages arenas: create, clone, rename, inspect, toggle or delete a court setup. | `heroicvolleyball.volleyarena` |
 | `/volleygive <shovel\|sword\|shield> [wooden\|iron\|diamond]` | Gives a volleyball tool. | `heroicvolleyball.volleygive` |
 | `/volleymusic <start\|stop\|list\|reload> [song]` | Controls Note Block Studio music. | `heroicvolleyball.volleymusic` |
 | `/volleyreload` | Reloads `config.yml` and `messages.yml`. | `heroicvolleyball.volleyreload` |
-| `/partycreate` | Creates a party. | `heroicvolleyball.party` |
-| `/partyinvite <player>` | Invites a player (leader only). | `heroicvolleyball.party` |
-| `/partyleave` | Leaves your party. | `heroicvolleyball.party` |
-| `/partydisband` | Disbands the party (leader only). | `heroicvolleyball.party` |
+| `/volleyteam <create\|invite\|accept\|deny\|leave\|kick\|transfer\|disband\|rename\|color\|info\|top\|chat> ...` | Manages persistent teams (aliases `/vteam`, `/vt`). | `heroicvolleyball.team` |
+| `/teamduel <team> <sets>` | Challenges another team to a best-of `1`/`3`/`5` duel (alias `/vduel`). | `heroicvolleyball.team.duel` |
+
+### Teams
+
+Teams are persistent and stored in `plugins/HeroicVolleyBall/teams.yml` behind a
+`TeamRepository` (a SQL backend can be dropped in later). A team has a unique name
+(3–16 letters, digits or underscores, case-insensitive, reserved words blocked), a
+hex colour, an optional tag, a leader, members (each with a preferred role and join
+date), created-at, aggregate stats and invite settings.
+
+- `/volleyteam create <name>` – found a team (you become leader).
+- `/volleyteam invite <player>` – leader only; the invite expires after
+  `team.invite-expiry-seconds` and is accepted/declined with clickable chat buttons
+  or `/volleyteam accept` / `/volleyteam deny`.
+- `/volleyteam leave`, `kick <player>`, `transfer <player>`, `disband`,
+  `rename <name>`, `color <hex|name>`, `info [team]`, `top`, `chat <message>`.
+- Roles: `SETTER`, `OUTSIDE_HITTER`, `MIDDLE_BLOCKER`, `OPPOSITE`, `LIBERO`,
+  `DEFENSIVE_SPECIALIST`, `ANY`; each maps to a preferred court slot for lineups.
+- `/volleyteam info` opens the team screen: the leader's head up top, member heads
+  (online first) below, and leader-only rows for name, colour, tag, invites and
+  disband. Members click their own head to change their role; the leader can kick,
+  transfer leadership or change another member's role.
+- Team colour can be picked from presets or typed as a custom `#RRGGBB` in chat
+  (type `cancel` to abort, timed out after `team.input-timeout-seconds`).
+
+### Team duels
+
+- `/teamduel <team> <sets>` – only the leader can challenge; the target leader gets
+  clickable Accept/Decline buttons that expire after `duel.challenge-expiry-seconds`.
+  A team that is already in a match or has a pending challenge cannot be challenged.
+- On accept, both leaders pick their starting lineup from their online members
+  (same number each side) and press Ready; a random free arena is reserved.
+- During a duel, a disconnected player pauses the match for up to
+  `duel.disconnect-grace-seconds` (configurable) for a rejoin, after which their team
+  forfeits; a team with no players left always forfeits.
+- Results are recorded in both teams' stats and shown on a results screen.
 
 ### Setting up a court
 
@@ -57,16 +90,18 @@ arena you are standing in, then the default arena (`arena.default`).
 7. Optional: stand where each team's ball should serve from and run
    `/setballspawnpoint <red|blue>` (clear it with `[clear]`). `/spawnball` and serve
    placements prefer it.
-8. Check progress with `/volleyarena info main`, then run `/startgame main`. Party
-   members pick a team and position; the ball serves from Position 6 and players are
-   teleported into place.
+8. Check progress with `/volleyarena info main`, then run `/startgame main`. Players
+   pick a position; the ball serves from Position 6 and players are teleported into
+   place. When more than one arena is free, `/startgame` opens an arena picker that
+   shows each arena's state (free, in use, disabled or not ready).
 
 `/startgame` refuses to start until the arena is complete and lists whatever is
 missing: team courts (`/setarena`), all six positions per team (wand menu) and the
 ball spawn point (`/setballspawnpoint`). Use `/volleyarena list` to see every arena
 and whether it is ready. A disabled arena cannot be started, and an arena that
 already has a live match refuses a second start; a player who is already in a game
-cannot join another one.
+cannot join another one. Several arenas can run matches in parallel, up to
+`session.max-concurrent` (`-1` = unlimited).
 
 Copy a finished court to make a second one with `/volleyarena clone <source> <new>`,
 or move it with `/volleyarena rename <old> <new>` (this stops any match in it first).
@@ -87,8 +122,9 @@ to touch.
 
 ## Permissions
 
-All permissions default to `op` except `heroicvolleyball.party`, which defaults to
-`true` for everyone. Permission nodes are the same as the command names listed above.
+All permissions default to `op` except `heroicvolleyball.team` and
+`heroicvolleyball.team.duel`, which default to `true` for everyone. Permission nodes
+are the same as the command names listed above.
 
 ## Placeholders (PlaceholderAPI)
 
@@ -120,11 +156,17 @@ config:
 - `config.yml` – plugin settings only. New settings added in later versions are
   inserted into existing files automatically on startup and on `/volleyreload`
   (existing values are never overwritten), so you never need to delete it.
+- `gui.yml` – every menu's title, size, filler glass, button slots, item
+  materials and names/lore (with `&` colour codes and `{}` placeholders).
+  `/volleyreload` re-reads it. Menu titles are legacy `&`-coded (e.g.
+  `&8Team Info`). Available placeholders are listed at the bottom of the file.
 - `arenas/<name>.yml` – one file per arena, holding its courts, back rows, ball
   spawn points and positions `1`–`6` per team, each team's facing direction,
   per-team display name/colour (`teams.<red|blue>.name` / `.color`) and the
   optional `lobby` and `spectator-spawn` locations. Manage them with
   `/volleyarena`.
+- `teams.yml` – persistent teams (identity, members, roles, stats, invite
+  settings). Managed with `/volleyteam`.
 - Older single-arena installs (`arenas.yml`, `positions.yml`, `backrow.yml`,
   `ballspawn.yml`) are migrated into `arenas/default.yml` on first start and the
   originals are renamed to `*.legacy`.
@@ -162,12 +204,18 @@ config:
 - `scoreboard.viewers` – when `true`, players standing in an arena but not playing
   that match see the live sidebar as spectators (removed when they leave or the
   match ends).
-- `party.max-size` – maximum party size (must be even to start).
+- `team.{max-roster,invite-expiry-seconds,default-color,input-timeout-seconds}` –
+  roster cap (hard-capped at 12), invite lifetime, default team colour and chat
+  input timeout.
+- `duel.{max-sets,challenge-expiry-seconds,disconnect-grace-seconds}` – largest
+  best-of value, challenge lifetime and disconnect grace before a forfeit.
 - `tools.reach-bonus` – extra interaction range while a game is running.
 - `music.{enabled,song,volume}` – Note Block Studio track in `plugins/HeroicVolleyBall/music/`.
 - `arena.default` – the arena used by commands and placeholders when none is named.
 - `session.{restore-on-world-change,restore-on-leave}` – when to give a player back
   the inventory and potion effects saved when they joined a game.
+- `session.max-concurrent` – maximum matches running at once across all arenas
+  (`-1` = unlimited).
 
 `messages.yml` uses [MiniMessage](https://docs.advntr.dev/minimessage/format.html)
 formatting. Placeholders are written as `{name}` (for example `{team}`, `{position}`,
