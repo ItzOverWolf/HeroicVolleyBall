@@ -50,6 +50,11 @@ public final class Messages {
         return value != null ? value : key;
     }
 
+    /** Read-only view of a config section, used by the help renderer. */
+    public org.bukkit.configuration.ConfigurationSection section(String key) {
+        return config.getConfigurationSection(key);
+    }
+
     public Component parse(String raw, String... placeholders) {
         String text = raw;
         for (int i = 0; i + 1 < placeholders.length; i += 2) {

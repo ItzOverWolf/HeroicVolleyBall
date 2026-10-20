@@ -43,13 +43,20 @@ public final class SetBallSpawnCommand implements CommandExecutor, TabCompleter 
             return true;
         }
 
-        boolean clear = args.length == 2 && args[1].equalsIgnoreCase("clear");
-        if (args.length == 2 && !clear) {
-            messages.send(player, "ballspawn.usage");
-            return true;
+        boolean clear = false;
+        String arenaName = null;
+        for (int index = 1; index < args.length; index++) {
+            if (args[index].equalsIgnoreCase("clear")) {
+                clear = true;
+            } else if (arenaName == null) {
+                arenaName = args[index];
+            } else {
+                messages.send(player, "ballspawn.usage");
+                return true;
+            }
         }
 
-        Arena arena = resolveArena(player, args.length == 3 ? args[2] : null);
+        Arena arena = resolveArena(player, arenaName);
         if (arena == null) {
             messages.send(player, "arena.none");
             return true;
@@ -103,7 +110,13 @@ public final class SetBallSpawnCommand implements CommandExecutor, TabCompleter 
             return options;
         }
         if (args.length == 3) {
-            return Filter.names(arenaManager.names(), args[2]);
+            List<String> options = new ArrayList<>();
+            boolean hasClear = args[1].equalsIgnoreCase("clear") || args[2].equalsIgnoreCase("clear");
+            if (!hasClear) {
+                options.add("clear");
+            }
+            options.addAll(Filter.names(arenaManager.names(), args[2]));
+            return options;
         }
         return List.of();
     }

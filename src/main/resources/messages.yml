@@ -7,7 +7,7 @@
 # Placeholders are wrapped in {curly_braces}. See README.md for the full list.
 
 # Prepended to most command feedback messages.
-prefix: "<dark_aqua>[</dark_aqua><aqua>Volleyball</aqua><dark_aqua>]</dark_aqua> <gray>"
+prefix: "<#f08e26><bold>HeroicVolleyBall</bold></#f08e26> <dark_gray>»</dark_gray> <gray>"
 
 general:
   players-only: "<red>This command can only be used by players."
@@ -38,35 +38,35 @@ wand:
   received: "<green>You received the Volleyball Wand. <gray>Left-click for point 1, right-click for point 2."
   point1: "<gray>Point 1 set to <aqua>{location}</aqua><gray>."
   point2: "<gray>Point 2 set to <aqua>{location}</aqua><gray>."
-  both-points: "<green>Both points set! Use <white>/setarena <red|blue> [direction] [arena]<green>."
+  both-points: "<green>Both points set! Use <white>/vb admin setarena <red|blue> [direction] [arena]<green>."
 
 arena:
   set: "<gray>The <team> <gray>court for arena <white>{arena}</white> <gray>has been set, facing <white>{facing}</white><gray>!"
   complete: "<green>Arena <white>{arena}</white> <green>is fully set up and ready to play."
-  still-incomplete: "<yellow>Arena <white>{arena}</white> <yellow>is still missing something. Run <white>/volleyarena info {arena}</white> <yellow>for details."
-  usage: "<red>Usage: /setarena <red|blue> [direction] [arena]"
-  usage-hint: "<gray>Direction: north, south, east, west (or n/s/e/w) plus diagonals. Omit it to face where you are looking now. Omit <white>[arena]<gray> to use the arena you are standing in (or the default)."
+  still-incomplete: "<yellow>Arena <white>{arena}</white> <yellow>is still missing something. Run <white>/vb admin arena info {arena}</white> <yellow>for details."
+  usage: "<red>Usage: /vb admin setarena <red|blue> [direction] [arena]"
+  usage-hint: "<gray>Direction: north, south, east, west (or n/s/e/w) plus diagonals. Omit it to face where you are looking now. Omit <white>[arena]<gray> to use the arena you are standing in (or the default). Use <white>/vb admin wand</white> <gray>to select the court first."
   unknown-team: "<red>Unknown team \"{input}\". Use red or blue."
   unknown-direction: "<red>Unknown direction \"{input}\". Use north, south, east, west or a diagonal."
-  need-points: "<red>You must select two points with the Volleyball Wand (/volleywand) first."
+  need-points: "<red>You must select two points with the Volleyball Wand (/vb admin wand) first."
   world-mismatch: "<red>Both points must be in the same world."
-  none: "<red>No arena found here and no default arena is set. Create one with <white>/volleyarena create <name></white><red>."
+  none: "<red>No arena found here and no default arena is set. Create one with <white>/vb admin arena create <name></white><red>."
   not-found: "<red>Arena \"{arena}\" does not exist."
   already-exists: "<red>Arena \"{arena}\" already exists."
-  created: "<green>Arena <white>{arena}</white> <green>created. Use the wand and <white>/setarena</white>, <white>/setbackrow</white> and <white>/setballspawnpoint</white> to build it."
+  created: "<green>Arena <white>{arena}</white> <green>created. Use <white>/vb admin wand</white> <green>and <white>/vb admin setarena</white>, <white>/vb admin setbackrow</white> and <white>/vb admin setballspawnpoint</white> <green>to build it."
   cloned: "<green>Arena <white>{source}</white> <green>cloned to <white>{arena}</white><green>."
   renamed: "<green>Arena <white>{source}</white> <green>renamed to <white>{arena}</white><green>."
   deleted: "<yellow>Arena <white>{arena}</white> <yellow>deleted."
   enabled: "<green>Arena <white>{arena}</white> <green>enabled."
   disabled: "<yellow>Arena <white>{arena}</white> <yellow>disabled."
-  list-empty: "<gray>No arenas exist yet. Create one with <white>/volleyarena create <name></white><gray>."
+  list-empty: "<gray>No arenas exist yet. Create one with <white>/vb admin arena create <name></white><gray>."
   list-header: "<gold>Arenas:"
   list-entry: "<gray> - <white>{arena}</white> <dark_gray>({state})"
   info-header: "<gold>Arena <white>{arena}</white><gold>:"
   info-state: "<gray>Enabled: <white>{state}</white> <gray>| Ready: <white>{complete}</white>"
-  info-side: "<gray>  {team}<gray>: court={court} backrow={backrow} spawn={spawn} positions={positions}"
+  info-side: "<gray>  {team}<gray>: court={court} backrow={backrow} ballspawn={ballspawn} playerpositions={playerpositions}"
   info-default: "<gray>Default arena for unnamed commands: <white>{default}</white>"
-  management-usage: "<red>Usage: /volleyarena <create|delete|clone|rename|list|info|enable|disable> [name] [name]"
+  management-usage: "<red>Usage: /vb admin arena <create|delete|clone|rename|list|info|enable|disable> [name] [name]"
   picker-title: "<dark_gray><bold>ꜱᴇʟᴇᴄᴛ ᴀʀᴇɴᴀ"
   picker-free: "<green>Free - click to play"
   picker-in-use: "<red>In use"
@@ -104,15 +104,15 @@ score:
   set: "{team} <white>wins the set!  <white>Sets: Red {red_sets} - {blue_sets} Blue"
   set-title: "{team} <white>wins the set!"
   set-subtitle: "<white>Sets: Red {red_sets} - {blue_sets} Blue"
-  win: "{team} <white>wins the game! <gray>(Run /startgame to play again)"
+  win: "{team} <white>wins the game! <gray>(Run /vb admin start to play again)"
   win-title: "{team} <white>wins the game!"
-  win-subtitle: "<gray>Run /startgame to play again"
+  win-subtitle: "<gray>Run /vb admin start to play again"
 
 game:
-  setup-missing: "<red><bold>Missing setup! <yellow>Fix everything below, then run /startgame again."
-  setup-missing-arena: "<red>- <yellow>{team}'s arena is not set <gray>(/setarena {color})"
+  setup-missing: "<red><bold>Missing setup! <yellow>Fix everything below, then run /vb admin start again."
+  setup-missing-arena: "<red>- <yellow>{team}'s arena is not set <gray>(/vb admin setarena {color})"
   setup-missing-positions: "<red>- <yellow>Positions are not set for {team} <gray>(sneak + right-click the wand to open the position menu)"
-  setup-missing-spawnpoint: "<red>- <yellow>{team}'s ball spawn point is not set <gray>(/setballspawnpoint {color})"
+  setup-missing-spawnpoint: "<red>- <yellow>{team}'s ball spawn point is not set <gray>(/vb admin setballspawnpoint {color})"
   solo-choose: "<green>Choose your position to start a solo game."
   solo-started: "<green>Solo game started at Position {position}."
   assigned: "<green>Game on! Your team has been assigned."
@@ -126,9 +126,9 @@ game:
   stopped: "<yellow>The game in arena <white>{arena}</white> <yellow>has been stopped. The ball and music have been removed and the score reset."
   restarted: "<green>The game in arena <white>{arena}</white> <green>has been restarted! The ball has been placed at Position 6."
   not-running: "<red>No game is running in arena <white>{arena}</white><red>."
-  arena-disabled: "<red>Arena <white>{arena}</white> <red>is disabled. Enable it with <white>/volleyarena enable {arena}</white><red>."
-  already-running: "<red>A game is already running in arena <white>{arena}</white><red>. Stop it with <white>/stopgame {arena}</white><red> first."
-  already-in-game: "<red>You are already in a game. Leave it with <white>/stopgame</white><red> or finish the match first."
+  arena-disabled: "<red>Arena <white>{arena}</white> <red>is disabled. Enable it with <white>/vb admin arena enable {arena}</white><red>."
+  already-running: "<red>A game is already running in arena <white>{arena}</white><red>. Stop it with <white>/vb admin stop {arena}</white><red> first."
+  already-in-game: "<red>You are already in a game. Leave it with <white>/vb leave</white><red> or finish the match first."
   point-countdown-title: "<yellow><bold>{seconds}</bold>"
   point-countdown-subtitle: "<gray>{team} <gray>serves next..."
   round-countdown-title: "<gold><bold>{seconds}</bold>"
@@ -140,16 +140,16 @@ game:
 
 team:
   players-only: "<red>Only players can use team commands."
-  usage: "<red>Usage: /volleyteam <create|invite|accept|deny|leave|kick|transfer|disband|rename|color|info|top|chat> ..."
-  already-in: "<red>You are already in a team. Leave it with <white>/volleyteam leave</white> first."
-  not-in: "<red>You are not in a team. Create one with <white>/volleyteam create <name></white>."
+  usage: "<red>Usage: /vb team <create|invite|accept|deny|leave|kick|transfer|disband|rename|color|info|top|chat|queue|unqueue> ..."
+  already-in: "<red>You are already in a team. Leave it with <white>/vb team leave</white> first."
+  not-in: "<red>You are not in a team. Create one with <white>/vb team create <name></white>."
   name-taken: "<red>Team name \"{name}\" is already taken."
   name-invalid: "<red>Invalid name. Use 3-16 letters, digits or underscores."
   name-reserved: "<red>That name is reserved."
   created: "<green>Team <white>{team}</white> <green>created!"
   created-broadcast: "<gray>{player} created the team {team}<gray>."
   leader-only: "<red>Only the team leader can do that."
-  invite-usage: "<red>Usage: /volleyteam invite <player>"
+  invite-usage: "<red>Usage: /vb team invite <player>"
   player-not-found: "<red>Player not found."
   self-invite: "<red>You cannot invite yourself."
   target-in-team: "<red>{player} is already in a team."
@@ -172,25 +172,25 @@ team:
   left-broadcast: "<gray>{player} left the team."
   disbanded: "<yellow>Your team has been disbanded."
   disbanded-broadcast: "<gray>The team {team} was disbanded."
-  kick-usage: "<red>Usage: /volleyteam kick <player>"
-  kick-self: "<red>Use <white>/volleyteam leave</white> to leave, or transfer leadership first."
+  kick-usage: "<red>Usage: /vb team kick <player>"
+  kick-self: "<red>Use <white>/vb team leave</white> to leave, or transfer leadership first."
   kick-not-member: "<red>{player} is not on your team."
   kicked: "<yellow>{player} was kicked from the team."
   kick-notify: "<red>You were kicked from {team}."
-  transfer-usage: "<red>Usage: /volleyteam transfer <player>"
+  transfer-usage: "<red>Usage: /vb team transfer <player>"
   transfer-not-member: "<red>{player} is not on your team."
   transfer-done: "<green>{player} <green>is now the team leader."
   transfer-notify: "<green>You are now the leader of {team}<green>."
-  rename-usage: "<red>Usage: /volleyteam rename <name>"
+  rename-usage: "<red>Usage: /vb team rename <name>"
   renamed: "<green>Team renamed to {team}<green>."
-  color-usage: "<red>Usage: /volleyteam color <hex|name>"
+  color-usage: "<red>Usage: /vb team color <hex|name>"
   color-invalid: "<red>Invalid colour. Use a #RRGGBB hex code or a colour name."
   color-set: "<green>Team colour set to {color}<green>."
-  chat-usage: "<red>Usage: /volleyteam chat <message>"
+  chat-usage: "<red>Usage: /vb team chat <message>"
   chat-format: "<gray>[{team}<gray>] <white>{player}<gray>: <white>{message}"
-  info-usage: "<red>Usage: /volleyteam info [team]"
+  info-usage: "<red>Usage: /vb team info [team]"
   info-unknown: "<red>No team found matching \"{name}\"."
-  info-header: "<#FF8A00><bold>{team}</bold> <dark_gray>› <gray>info"
+  info-header: "<#F08E26><bold>{team}</bold> <dark_gray>› <gray>info"
   info-line: "<#FFB347>{label}<gray>: <white>{value}"
   info-member: "<gray>- <white>{player} <dark_gray>(<#FFB347>{role}<dark_gray>) <gray>{status}"
   top-header: "<gold>Top teams by wins:"
@@ -203,58 +203,18 @@ team:
   invites-closed-denied: "<red>{team} is not accepting invitations right now."
   offline-kicked: "<yellow>{player} was removed from the team (offline)."
 
-team-gui:
-  title: "<#FF8A00><bold>ᴛᴇᴀᴍ ɪɴꜰᴏ"
-  leader-label: "<#FFB347>ʟᴇᴀᴅᴇʀ"
-  member-label: "<#FFB347>ᴍᴇᴍʙᴇʀ"
-  role-label: "<#FFB347>ʀᴏʟᴇ"
-  online-label: "<#FFB347>ᴏɴʟɪɴᴇ"
-  team-label: "<#FFB347>ᴛᴇᴀᴍ"
-  status-online: "<green>Online"
-  status-offline: "<dark_gray>Offline"
-  view-own: "<#FFB347>Click to change your role"
-  view-member: "<#FFB347>Click to manage this member"
-  leader-only-lore: "<dark_gray>Leader only"
-  team-name: "<#FF8A00><bold>ᴛᴇᴀᴍ ɴᴀᴍᴇ"
-  team-color: "<#FF8A00><bold>ᴛᴇᴀᴍ ᴄᴏʟᴏʀ"
-  team-tag: "<#FF8A00><bold>ᴛᴀɢ"
-  invites: "<#FF8A00><bold>ɪɴᴠɪᴛᴇs"
-  invites-open: "<green>Open"
-  invites-closed: "<red>Closed"
-  disband: "<red><bold>ᴅɪsʙᴀɴᴅ ᴛᴇᴀᴍ"
-  disband-confirm-title: "<red><bold>ᴄᴏɴꜰɪʀᴍ ᴅɪsʙᴀɴᴅ"
-  disband-confirm: "<red>Click again to disband {team}."
-  confirm: "<green><bold>[CONFIRM]"
-  cancel: "<gray><bold>[CANCEL]"
-  kicked-title: "<red><bold>ᴋɪᴄᴋ ᴍᴇᴍʙᴇʀ"
-  kick-member: "<red><bold>ᴋɪᴄᴋ ᴍᴇᴍʙᴇʀ"
-  member-actions-title: "<dark_gray><bold>ᴍᴀɴᴀɢᴇ ᴍᴇᴍʙᴇʀ"
-  kick-confirm: "<red>Click {player}'s head again to kick them."
-  transfer: "<green><bold>ᴛʀᴀɴsꜰᴇʀ ʟᴇᴀᴅᴇʀsʜɪᴘ"
-  change-role: "<#FF8A00><bold>ᴄʜᴀɴɢᴇ ʀᴏʟᴇ"
-  role-picker-title: "<dark_gray><bold>ᴄʜᴏᴏsᴇ ʀᴏʟᴇ"
-  color-picker-title: "<dark_gray><bold>ᴄʜᴏᴏsᴇ ᴄᴏʟᴏʀ"
-  color-preset: "<{color}>"
-  color-custom: "<#FF8A00><bold>ᴄᴜsᴛᴏᴍ ʜᴇx"
-  color-custom-lore:
-    - "<gray>Type a hex colour in chat, e.g. <white>#FF8A00</white>"
-    - "<gray>Type <white>cancel</white> to stop."
-  tag-label: "<#FFB347>ᴛᴀɢ"
-  name-label: "<#FFB347>ɴᴀᴍᴇ"
-  click-to-change: "<gray>Click to change"
-  member-count: "<#FFB347>ᴍᴇᴍʙᴇʀs"
-
 team-input:
-  name-prompt: "<#FF8A00>Type the new team name in chat, or <white>cancel</white> to stop."
-  tag-prompt: "<#FF8A00>Type the new team tag in chat, or <white>cancel</white> to stop."
-  hex-prompt: "<#FF8A00>Type a hex colour like <white>#FF8A00</white> in chat, or <white>cancel</white> to stop."
+  name-prompt: "<#F08E26>Type the new team name in chat, or <white>cancel</white> to stop."
+  tag-prompt: "<#F08E26>Type the new team tag in chat, or <white>cancel</white> to stop."
+  invite-prompt: "<#F08E26>Type the name of the player to invite in chat, or <white>cancel</white> to stop."
+  hex-prompt: "<#F08E26>Type a hex colour like <white>#F08E26</white> in chat, or <white>cancel</white> to stop."
   cancelled: "<gray>Cancelled."
   invalid-hex: "<red>That is not a valid #RRGGBB colour."
   preview: "<gray>Preview: {color}████████ <gray>({hex})"
   expired: "<gray>Input timed out."
 
 duel:
-  usage: "<red>Usage: /teamduel <team> <sets>"
+  usage: "<red>Usage: /vb duel <team> <sets>"
   players-only: "<red>Only players can duel."
   invalid-sets: "<red>Sets must be 1, 3 or 5 (max {max})."
   team-not-found: "<red>No team found matching \"{name}\"."
@@ -298,7 +258,7 @@ duel:
   win-title: "{team} <white>wins!"
   win-subtitle: "<white>Sets: {red_sets} - {blue_sets}"
   results-title: "<dark_gray><bold>ᴅᴜᴇʟ ʀᴇsᴜʟᴛs"
-  results-winner: "<#FF8A00><bold>{team} ᴡɪɴs!"
+  results-winner: "<#F08E26><bold>{team} ᴡɪɴs!"
   results-sets: "<gray>Sets: <white>{red_sets} - {blue_sets}"
   results-close: "<gray>Click to close"
   cancelled: "<gray>The duel was cancelled."
@@ -307,7 +267,7 @@ tool:
   power-set: "<gray>{tool} power set to {tier}"
 
 give:
-  usage: "<red>Usage: /volleygive <shovel|sword|shield> [tier]"
+  usage: "<red>Usage: /vb admin give <shovel|sword|shield> [tier]"
   unknown-tool: "<red>Unknown tool \"{input}\". Use shovel, sword or shield."
   unknown-tier: "<red>Unknown tier \"{input}\". Use wooden, iron or diamond."
   received: "<green>You received the <white>{tool}</white>."
@@ -317,18 +277,18 @@ gui:
   saved-chat: "<green>Saved Position {position} ({row}) for Team {team} in arena <white>{arena}</white> at <aqua>{location}</aqua>"
 
 backrow:
-  usage: "<red>Usage: /setbackrow <red|blue> [arena]"
+  usage: "<red>Usage: /vb admin setbackrow <red|blue> [arena]"
   unknown-team: "<red>Unknown team \"{input}\". Use red or blue."
   set: "<gray>The {team} <gray>back row for arena <white>{arena}</white> <gray>has been set: <aqua>{location}</aqua>"
 
 ballspawn:
-  usage: "<red>Usage: /setballspawnpoint <red|blue> [clear] [arena]"
+  usage: "<red>Usage: /vb admin setballspawnpoint <red|blue> [arena] [clear]"
   unknown-team: "<red>Unknown team \"{input}\". Use red or blue."
   set: "<green>Ball spawn point for {team} <green>in arena <white>{arena}</white> <green>set at <aqua>{location}</aqua><green>. <gray>The ball will serve from here for this team."
   cleared: "<yellow>Ball spawn point cleared for {team} <yellow>in arena <white>{arena}</white><yellow>."
 
 music:
-  usage: "<red>Usage: /volleymusic <start|stop|list|reload> [song]"
+  usage: "<red>Usage: /vb admin music <start|stop|list|reload> [song]"
   start-failed: "<red>Could not start music. Check the music folder."
   no-session: "<red>No game session here to play music for. Start a game first."
   now-playing: "<green>Now playing in arena <white>{arena}</white><green>."
@@ -338,59 +298,141 @@ music:
   song-entry: "<gray> - {song}"
   reloaded: "<green>Music configuration reloaded."
 
-# Help command messages
+# Unified /vb help menu. Entries are filtered by permission and paginated.
+# Sections are printed in the order entries first reference them; entry order
+# below is the order shown. Add {command}/{description} placeholders in entry.
 help:
-  header: "<gradient:#eb8c34:#ff9f40><bold>HEROIC VOLLEYBALL</bold></gradient> <gray>| <white>Help Menu</white>"
-  footer: "<gray>Type <white>/volleyhelp <page></white> for more info"
-  pages:
-    1:
-      title: "<#eb8c34><bold>GETTING STARTED</bold></#eb8c34>"
-      lines:
-        - " <#eb8c34>|</#eb8c34> <white>/volleywand</white> <gray>- Get selection tool"
-        - " <#eb8c34>|</#eb8c34> <white>/volleyarena create <name></white> <gray>- Create arena"
-        - " <#eb8c34>|</#eb8c34> <white>/setarena <red|blue></white> <gray>- Set court region"
-        - " <#eb8c34>|</#eb8c34> <white>/startgame [arena]</white> <gray>- Start a match"
-        - " <#eb8c34>|</#eb8c34> <white>/volleyjoin [arena]</white> <gray>- Join public queue"
-    2:
-      title: "<#eb8c34><bold>GAMEPLAY</bold></#eb8c34>"
-      lines:
-        - " <#eb8c34>|</#eb8c34> <white>Shovel</white> <gray>- Bump ball up/forward"
-        - " <#eb8c34>|</#eb8c34> <white>Sword</white> <gray>- Spike (down from above)"
-        - " <#eb8c34>|</#eb8c34> <white>Shield</white> <gray>- Block or catch underneath"
-        - " <#eb8c34>|</#eb8c34> <white>3 touches</white> <gray>per possession"
-        - " <#eb8c34>|</#eb8c34> <white>Sneak+RClick</white> <gray>- Cycle tool tier"
-    3:
-      title: "<#eb8c34><bold>TEAMS & DUELS</bold></#eb8c34>"
-      lines:
-        - " <#eb8c34>|</#eb8c34> <white>/volleyteam create <name></white> <gray>- Make a team"
-        - " <#eb8c34>|</#eb8c34> <white>/volleyteam invite <player></white> <gray>- Invite player"
-        - " <#eb8c34>|</#eb8c34> <white>/volleyteam info</white> <gray>- Open team GUI"
-        - " <#eb8c34>|</#eb8c34> <white>/teamduel <team> <1|3|5></white> <gray>- Challenge team"
-        - " <#eb8c34>|</#eb8c34> <white>/volleyteam queue</white> <gray>- Queue your team"
-    4:
-      title: "<#eb8c34><bold>QUEUE & ARENAS</bold></#eb8c34>"
-      lines:
-        - " <#eb8c34>|</#eb8c34> <white>/volleyjoin</white> <gray>- Join queue/picker"
-        - " <#eb8c34>|</#eb8c34> <white>/volleyleave</white> <gray>- Leave queue/match"
-        - " <#eb8c34>|</#eb8c34> <white>/volleyarena set queue <arena> true</white> <gray>- Enable queue"
-        - " <#eb8c34>|</#eb8c34> <white>/volleyarena sign add <arena></white> <gray>- Add join sign"
-        - " <#eb8c34>|</#eb8c34> <white>/volleyarena list/info</white> <gray>- Check arenas"
-    5:
-      title: "<#eb8c34><bold>RULES QUICK REF</bold></#eb8c34>"
-      lines:
-        - " <#eb8c34>|</#eb8c34> <white>Sets/Points</white> <gray>- Win sets to win match"
-        - " <#eb8c34>|</#eb8c34> <white>Touches</white> <gray>- Max 3 per possession"
-        - " <#eb8c34>|</#eb8c34> <white>Block</white> <gray>- Doesn't count as touch"
-        - " <#eb8c34>|</#eb8c34> <white>Serve</white> <gray>- From Position 6"
-        - " <#eb8c34>|</#eb8c34> <white>Faults</white> <gray>- Score to opponent"
+  header: "<gradient:#f08e26:#ff9f40><bold>HEROIC VOLLEYBALL</bold></gradient> <dark_gray>| <gray>Help <dark_gray>(<white>{page}</white>/<white>{pages}</white>)"
+  section: " <#f08e26><bold>{name}"
+  entry: " <dark_gray>› <white>{command}</white> <dark_gray>- <gray>{description}"
+  footer: "<dark_gray>Page <white>{page}</white>/<white>{pages}</white> <dark_gray>| <gray>Legacy aliases such as <white>/volleyteam</white> still work"
+  footer-next: "<dark_gray>» <gray>/vb help {next}"
+  lines-per-page: 12
+  unknown-sub: "<red>Unknown command \"{input}\". Opening the help menu..."
+  admin-usage: "<gray>Usage: <white>/vb admin <panel|guide|wand|arena|setarena|setbackrow|setballspawnpoint|spawnball|start|stop|restart|give|music|reload></white>"
+  sections:
+    player: "PLAYER"
+    queue: "QUEUE"
+    teams: "TEAMS & DUELS"
+    admin: "ADMINISTRATION"
+  entries:
+    root:
+      cmd: "/vb"
+      desc: "Show this help menu"
+      section: player
+    help:
+      cmd: "/vb help [page]"
+      desc: "Browse the help pages"
+      section: player
+      perm: heroicvolleyball.help
+    menu:
+      cmd: "/vb menu"
+      desc: "Open the main hub menu"
+      section: player
+      perm: heroicvolleyball.hub
+    guide:
+      cmd: "/vb guide"
+      desc: "Open the illustrated gameplay guide"
+      section: player
+      perm: heroicvolleyball.guide
+    join:
+      cmd: "/vb join [arena]"
+      desc: "Join the public queue (or right-click a join sign)"
+      section: queue
+      perm: heroicvolleyball.queue
+    leave:
+      cmd: "/vb leave"
+      desc: "Leave your queue or current match"
+      section: queue
+      perm: heroicvolleyball.queue
+    team:
+      cmd: "/vb team <create|invite|info|...>"
+      desc: "Create and manage your team (full list in /vb team)"
+      section: teams
+      perm: heroicvolleyball.team
+    duel:
+      cmd: "/vb duel <team> <1|3|5>"
+      desc: "Challenge another team to a duel"
+      section: teams
+      perm: heroicvolleyball.team.duel
+    panel:
+      cmd: "/vb admin panel"
+      desc: "Open the admin control panel"
+      section: admin
+      perm: heroicvolleyball.admin
+    admin-guide:
+      cmd: "/vb admin guide"
+      desc: "Open the setup and administration guide"
+      section: admin
+      perm: heroicvolleyball.admin
+    wand:
+      cmd: "/vb admin wand"
+      desc: "Get the arena selection wand"
+      section: admin
+      perm: heroicvolleyball.volleywand
+    arena:
+      cmd: "/vb admin arena <create|list|info|set|sign|enable|disable|clone|rename|delete>"
+      desc: "Create and edit arenas"
+      section: admin
+      perm: heroicvolleyball.volleyarena
+    setarena:
+      cmd: "/vb admin setarena <red|blue> [direction] [arena]"
+      desc: "Set a team's court from your wand selection"
+      section: admin
+      perm: heroicvolleyball.setarena
+    setbackrow:
+      cmd: "/vb admin setbackrow <red|blue> [arena]"
+      desc: "Set a team's back-row region"
+      section: admin
+      perm: heroicvolleyball.setbackrow
+    setballspawnpoint:
+      cmd: "/vb admin setballspawnpoint <red|blue> [clear] [arena]"
+      desc: "Set where a team serves from"
+      section: admin
+      perm: heroicvolleyball.setballspawnpoint
+    spawnball:
+      cmd: "/vb admin spawnball [arena]"
+      desc: "Spawn the volleyball at your feet"
+      section: admin
+      perm: heroicvolleyball.spawnball
+    start:
+      cmd: "/vb admin start [arena]"
+      desc: "Start a match"
+      section: admin
+      perm: heroicvolleyball.startgame
+    stop:
+      cmd: "/vb admin stop [arena]"
+      desc: "Stop a running match"
+      section: admin
+      perm: heroicvolleyball.stopgame
+    restart:
+      cmd: "/vb admin restart [arena]"
+      desc: "Restart a running match"
+      section: admin
+      perm: heroicvolleyball.restartgame
+    give:
+      cmd: "/vb admin give <shovel|sword|shield> [wooden|iron|diamond]"
+      desc: "Give yourself a volleyball tool"
+      section: admin
+      perm: heroicvolleyball.volleygive
+    music:
+      cmd: "/vb admin music <start|stop|list|reload> [song]"
+      desc: "Control match music"
+      section: admin
+      perm: heroicvolleyball.volleymusic
+    reload:
+      cmd: "/vb admin reload"
+      desc: "Reload configs, messages, GUIs and arenas"
+      section: admin
+      perm: heroicvolleyball.volleyreload
 
 # Public queue / lobby mode.
 queue:
-  disabled: "<red>Arena <white>{arena}</white> <red>is not accepting queue joins. Enable it with <white>/volleyarena set queue {arena} true</white>."
+  disabled: "<red>Arena <white>{arena}</white> <red>is not accepting queue joins. Enable it with <white>/vb admin arena set queue {arena} true</white>."
   not-ready: "<red>Arena <white>{arena}</white> <red>is not fully set up yet."
   in-game: "<red>Arena <white>{arena}</white> <red>is already in game."
   full: "<red>The queue for <white>{arena}</white> is full."
-  already-queued: "<red>You are already in a queue or a match. Leave with <white>/volleyleave</white>."
+  already-queued: "<red>You are already in a queue or a match. Leave with <white>/vb leave</white>."
   no-arenas: "<red>No queue arenas are available right now."
   not-queued: "<red>You are not in a queue."
   joined: "<green>You joined the queue for <white>{arena}</white> <gray>({players}/{max})."
@@ -429,8 +471,8 @@ queue:
   sign-line-2: "<white>{players}</white><gray>/<white>{max}"
   sign-line-3: "<gold>{status}"
   sign-line-4: "<gray>Click to join"
-  set-usage: "<red>Usage: /volleyarena set <lobby|min|max|queue> <arena> [value]"
-  sign-usage: "<red>Usage: /volleyarena sign <add|remove> <arena>"
+  set-usage: "<red>Usage: /vb admin arena set <lobby|min|max|queue> <arena> [value]"
+  sign-usage: "<red>Usage: /vb admin arena sign <add|remove> <arena>"
   invalid-value: "<red>Value must be a number between 2 and 12."
   set-lobby: "<green>Lobby spawn for arena <white>{arena}</white> <green>set to your location."
   set-min: "<green>Minimum players for <white>{arena}</white> <green>set to <white>{value}</white>."

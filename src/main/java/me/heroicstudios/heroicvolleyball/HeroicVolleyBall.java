@@ -16,6 +16,7 @@ import me.heroicstudios.heroicvolleyball.command.VolleyJoinCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyLeaveCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyMusicCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyReloadCommand;
+import me.heroicstudios.heroicvolleyball.command.VolleyRootCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyTeamCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyWandCommand;
 import me.heroicstudios.heroicvolleyball.game.ArenaPickerGui;
@@ -58,6 +59,7 @@ public final class HeroicVolleyBall extends JavaPlugin {
     private SetupGui setupGui;
     private ArenaPickerGui arenaPickerGui;
     private Messages messages;
+    private VolleyRootCommand rootCommand;
 
     @Override
     public void onEnable() {
@@ -136,7 +138,6 @@ public final class HeroicVolleyBall extends JavaPlugin {
         register("teamduel", new DuelCommand(duelManager, teamManager, messages));
         register("volleyjoin", new VolleyJoinCommand(queueManager, arenaManager, queueGui, messages));
         register("volleyleave", new VolleyLeaveCommand(queueManager, sessionManager, messages));
-        try { register("volleyhelp", new me.heroicstudios.heroicvolleyball.command.VolleyHelpCommand(messages)); } catch (Throwable ignored) {}
 
         VolleyMusicCommand volleyMusicCommand = new VolleyMusicCommand(sessionManager, arenaManager, messages);
         PluginCommand volleyMusic = getCommand("volleymusic");
@@ -156,6 +157,25 @@ public final class HeroicVolleyBall extends JavaPlugin {
         if (volleyGive != null) {
             volleyGive.setExecutor(volleyGiveCommand);
             volleyGive.setTabCompleter(volleyGiveCommand);
+        }
+
+        this.rootCommand = new VolleyRootCommand(this, messages);
+        for (String name : java.util.List.of("volleyteam", "teamduel", "volleyjoin", "volleyleave",
+                "volleywand", "volleyarena", "setarena", "setbackrow", "setballspawnpoint",
+                "spawnball", "startgame", "stopgame", "restartgame", "volleygive",
+                "volleymusic", "volleyreload")) {
+            rootCommand.route(name, getCommand(name));
+        }
+        PluginCommand vb = getCommand("vb");
+        if (vb != null) {
+            vb.setExecutor(rootCommand);
+            vb.setTabCompleter(rootCommand);
+            rootCommand.setSelf(vb);
+        }
+        PluginCommand volleyHelp = getCommand("volleyhelp");
+        if (volleyHelp != null) {
+            volleyHelp.setExecutor(rootCommand);
+            volleyHelp.setTabCompleter(rootCommand);
         }
     }
 
@@ -252,5 +272,9 @@ public final class HeroicVolleyBall extends JavaPlugin {
 
     public Messages getMessages() {
         return messages;
+    }
+
+    public VolleyRootCommand getRootCommand() {
+        return rootCommand;
     }
 }

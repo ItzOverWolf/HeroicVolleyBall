@@ -222,13 +222,33 @@ public final class ArenaManager {
         try {
             Files.createDirectories(target.getParent());
             config.save(temp.toFile());
+        } catch (IOException | RuntimeException exception) {
+            plugin.getLogger().warning("Could not save arena " + arenaName + ": " + exception.getMessage());
+            deleteQuietly(temp);
+            return;
+        }
+        try {
             move(temp, target);
         } catch (IOException exception) {
-            plugin.getLogger().warning("Could not save arena " + arenaName + ": " + exception.getMessage());
+            // Some Windows filesystems refuse an atomic replace of an existing
+            // file. Fall back to writing straight to the target so a change is
+            // never lost just because the temp-file dance failed.
+            plugin.getLogger().warning("Could not replace arena file " + arenaName
+                    + " (" + exception.getMessage() + "), writing directly.");
             try {
-                Files.deleteIfExists(temp);
-            } catch (IOException ignored) {
+                config.save(target.toFile());
+                deleteQuietly(temp);
+            } catch (IOException | RuntimeException directException) {
+                plugin.getLogger().warning("Could not save arena " + arenaName + ": " + directException.getMessage());
+                deleteQuietly(temp);
             }
+        }
+    }
+
+    private void deleteQuietly(Path path) {
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException ignored) {
         }
     }
 
@@ -334,7 +354,19 @@ public final class ArenaManager {
             return locations;
         }
         for (Object entry : list) {
-            if (entry instanceof Location location && location.getWorld() != null) {
+            Location location = null;
+            if (entry instanceof Location stored) {
+                try {
+                    if (stored.getWorld() != null) {
+                        location = stored;
+                    }
+                } catch (IllegalArgumentException unloaded) {
+                    // World is not loaded yet; the location cannot be rebuilt.
+                }
+            } else if (entry instanceof Map<?, ?> map) {
+                location = locationFromMap(map);
+            }
+            if (location != null) {
                 locations.add(location);
             }
         }
@@ -375,31 +407,28 @@ public final class ArenaManager {
             String id = side.getId();
             writeRegion(config, "courts." + id, arena.getCourt(side));
             writeRegion(config, "backrows." + id, arena.getBackrow(side));
-            Location spawn = arena.getBallSpawn(side);
-            if (spawn != null) {
-                config.set("ball-spawn." + id, spawn);
-            }
+            writeLocation(config, "ball-spawn." + id, arena.getBallSpawn(side));
             config.set("facing." + id, arena.getFacing(side));
             for (int number = 1; number <= 6; number++) {
-                Location position = arena.getPosition(side, number);
-                if (position != null) {
-                    config.set("positions." + id + "." + number, position);
-                }
+                writeLocation(config, "positions." + id + "." + number, arena.getPosition(side, number));
             }
             config.set("teams." + id + ".name", arena.teamName(side));
             config.set("teams." + id + ".color", arena.teamColorHex(side));
         }
-        if (arena.getLobby() != null) {
-            config.set("lobby", arena.getLobby());
-        }
-        if (arena.getSpectatorSpawn() != null) {
-            config.set("spectator-spawn", arena.getSpectatorSpawn());
-        }
+        writeLocation(config, "lobby", arena.getLobby());
+        writeLocation(config, "spectator-spawn", arena.getSpectatorSpawn());
         config.set("queue.enabled", arena.isQueueEnabled());
         config.set("queue.min-players", arena.getMinPlayers());
         config.set("queue.max-players", arena.getMaxPlayers());
         if (!arena.getJoinSigns().isEmpty()) {
-            config.set("queue.join-signs", arena.getJoinSigns());
+            List<Map<String, Object>> signs = new ArrayList<>();
+            for (Location sign : arena.getJoinSigns()) {
+                Map<String, Object> data = locationMap(sign);
+                if (data != null) {
+                    signs.add(data);
+                }
+            }
+            config.set("queue.join-signs", signs);
         }
         return config;
     }
@@ -430,21 +459,77 @@ public final class ArenaManager {
     }
 
     private @Nullable Location readLocation(YamlConfiguration config, String path) {
-        if (!config.isConfigurationSection(path)) {
-            return null;
+        Object raw = config.get(path);
+        // Older arena files stored a real ConfigurationSerializable Location
+        // ("==: org.bukkit.Location"), which YamlConfiguration hands back as a
+        // Location object rather than a ConfigurationSection. Checking only for
+        // a section made every saved location read back as null.
+        if (raw instanceof Location stored) {
+            try {
+                return stored.getWorld() != null ? stored : null;
+            } catch (IllegalArgumentException unloaded) {
+                return null;
+            }
         }
-        Location location = config.getLocation(path);
-        if (location == null || location.getWorld() == null) {
+        if (raw instanceof Map<?, ?> map) {
+            return locationFromMap(map);
+        }
+        if (config.isConfigurationSection(path)) {
             String worldName = config.getString(path + ".world");
             World world = worldName != null ? Bukkit.getWorld(worldName) : null;
             if (world == null) {
                 return null;
             }
-            location = new Location(world,
+            return new Location(world,
                     config.getDouble(path + ".x"), config.getDouble(path + ".y"), config.getDouble(path + ".z"),
                     (float) config.getDouble(path + ".yaw", 0.0), (float) config.getDouble(path + ".pitch", 0.0));
         }
-        return location;
+        return null;
+    }
+
+    private @Nullable Location locationFromMap(Map<?, ?> map) {
+        Object worldName = map.get("world");
+        World world = worldName != null ? Bukkit.getWorld(String.valueOf(worldName)) : null;
+        if (world == null) {
+            return null;
+        }
+        return new Location(world,
+                asDouble(map.get("x")), asDouble(map.get("y")), asDouble(map.get("z")),
+                (float) asDouble(map.get("yaw")), (float) asDouble(map.get("pitch")));
+    }
+
+    private static double asDouble(@Nullable Object value) {
+        return value instanceof Number number ? number.doubleValue() : 0.0;
+    }
+
+    private void writeLocation(YamlConfiguration config, String path, @Nullable Location location) {
+        Map<String, Object> data = locationMap(location);
+        if (data != null) {
+            config.set(path, data);
+        }
+    }
+
+    private static @Nullable Map<String, Object> locationMap(@Nullable Location location) {
+        if (location == null) {
+            return null;
+        }
+        World world;
+        try {
+            world = location.getWorld();
+        } catch (IllegalArgumentException unloaded) {
+            return null;
+        }
+        if (world == null) {
+            return null;
+        }
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("world", world.getName());
+        data.put("x", location.getX());
+        data.put("y", location.getY());
+        data.put("z", location.getZ());
+        data.put("yaw", location.getYaw());
+        data.put("pitch", location.getPitch());
+        return data;
     }
 
     private void move(Path source, Path target) throws IOException {

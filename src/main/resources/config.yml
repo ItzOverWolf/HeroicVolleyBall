@@ -144,8 +144,8 @@ ball:
       diamond: 1.1
     spike:
       wooden: 0.2
-      iron: 0.6
-      diamond: 1.0
+      iron: 0.7
+      diamond: 0.9
 
 # Match rules.
 game:
@@ -187,7 +187,7 @@ team:
   # Seconds an invite stays valid before it expires.
   invite-expiry-seconds: 60
   # Default team colour (hex) for newly created teams.
-  default-color: "#FF8A00"
+  default-color: "#F08E26"
   # Seconds a chat input prompt (team name, tag, custom hex) stays open.
   input-timeout-seconds: 30
 

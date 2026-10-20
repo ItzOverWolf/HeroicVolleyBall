@@ -34,7 +34,7 @@ public final class PositionGui implements InventoryHolder {
         this.arena = arena;
         this.arenaManager = arenaManager;
         this.inventory = Bukkit.createInventory(this, PositionLayout.SIZE,
-                Component.text("Set " + arena.teamName(side) + " position"));
+                me.heroicstudios.heroicvolleyball.util.Text.parse("<#f08e26><bold>SET POSITION"));
         PositionLayout.fillFrame(inventory);
         fillPositions();
     }

@@ -47,7 +47,7 @@ public final class SetupGui implements Listener {
             return;
         }
         Holder holder = new Holder(arena);
-        Inventory inventory = Bukkit.createInventory(holder, PositionLayout.SIZE, Component.text("Choose your position"));
+        Inventory inventory = Bukkit.createInventory(holder, PositionLayout.SIZE, me.heroicstudios.heroicvolleyball.util.Text.parse("<#f08e26><bold>CHOOSE YOUR POSITION"));
         holder.inventory = inventory;
         renderSolo(holder, inventory);
         player.openInventory(inventory);

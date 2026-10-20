@@ -22,7 +22,7 @@ public final class TeamSelectGui implements InventoryHolder {
 
     public TeamSelectGui(Location target) {
         this.target = target;
-        this.inventory = Bukkit.createInventory(this, PositionLayout.SIZE, Component.text("Which team?"));
+        this.inventory = Bukkit.createInventory(this, PositionLayout.SIZE, me.heroicstudios.heroicvolleyball.util.Text.parse("<#f08e26><bold>CHOOSE YOUR TEAM"));
         PositionLayout.fillFrame(inventory);
         fill();
     }

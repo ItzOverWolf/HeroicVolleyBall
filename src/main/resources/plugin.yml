@@ -7,6 +7,11 @@ authors: [HeroicStudios]
 softdepend: [PlaceholderAPI]
 
 commands:
+  vb:
+    description: Main HeroicVolleyBall command (help, hub, guide, team, queue, admin)
+    usage: /vb <help|menu|guide|team|duel|join|leave|admin> ...
+    aliases: [volley]
+    permission: heroicvolleyball.hub
   volleywand:
     description: Gives you the volleyball selection wand (stone axe)
     usage: /volleywand
@@ -58,7 +63,7 @@ commands:
   volleyteam:
     description: Manage your volleyball team
     usage: /volleyteam <create|invite|accept|deny|leave|kick|transfer|disband|rename|color|info|top|chat> ...
-    aliases: [vteam, vt]
+    aliases: [vteam, vt, team]
     permission: heroicvolleyball.team
   teamduel:
     description: Challenge another team to a duel
@@ -82,6 +87,33 @@ commands:
     permission: heroicvolleyball.help
 
 permissions:
+  heroicvolleyball.hub:
+    description: Allows use of the main /vb command and the hub menu
+    default: true
+  heroicvolleyball.help:
+    description: Allows viewing the /vb help menu
+    default: true
+  heroicvolleyball.guide:
+    description: Allows opening the in-game gameplay guide
+    default: true
+  heroicvolleyball.admin:
+    description: Access to the admin panel, admin guide and every setup command
+    default: op
+    children:
+      heroicvolleyball.volleywand: true
+      heroicvolleyball.volleyarena: true
+      heroicvolleyball.setarena: true
+      heroicvolleyball.setbackrow: true
+      heroicvolleyball.setballspawnpoint: true
+      heroicvolleyball.spawnball: true
+      heroicvolleyball.startgame: true
+      heroicvolleyball.stopgame: true
+      heroicvolleyball.restartgame: true
+      heroicvolleyball.volleygive: true
+      heroicvolleyball.volleymusic: true
+      heroicvolleyball.volleyreload: true
+      heroicvolleyball.queue.admin: true
+      heroicvolleyball.queue.signs: true
   heroicvolleyball.volleywand:
     description: Allows use of /volleywand
     default: op

@@ -21,7 +21,7 @@ lobby signs, countdowns and automatic side balancing.
    the `arenas/` folder.
 3. Edit `plugins/HeroicVolleyBall/config.yml` for physics, match and queue rules,
    `messages.yml` for every player-facing text, and `gui.yml` for menu layouts.
-4. Reload with `/volleyreload` after editing (a restart also works).
+4. Reload with `/vb admin reload` (or `/volleyreload`) after editing (a restart also works).
 
 ## Features
 
@@ -40,17 +40,39 @@ lobby signs, countdowns and automatic side balancing.
 
 ## Quick start
 
-1. `/volleyarena create main`
-2. `/volleywand`, then select each team's court half and run
-   `/setarena red main` and `/setarena blue main`.
+1. `/vb admin arena create main`
+2. `/vb admin wand`, then select each team's court half and run
+   `/vb admin setarena red main` and `/vb admin setarena blue main`.
 3. Sneak + right-click with the wand to set positions `1`–`6` per team.
-4. Optional: `/setbackrow <red|blue> main` and
-   `/setballspawnpoint <red|blue> main`.
-5. `/volleyarena info main` until it reports ready, then `/startgame main`.
+4. Optional: `/vb admin setbackrow <red|blue> main` and
+   `/vb admin setballspawnpoint <red|blue> main`.
+5. `/vb admin arena info main` until it reports ready, then
+   `/vb admin start main`.
+
+All of this is also reachable from the admin panel: `/vb admin panel` (or
+`/vb menu` → Admin Panel for staff).
 
 For a public queue on that arena, see [Public queue mode](#public-queue-mode).
 
 ## Commands
+
+### Main command (`/vb`, alias `/volley`)
+
+| Command | Description |
+| --- | --- |
+| `/vb` or `/vb help [page]` | Permission-filtered help menu (also `/volleyhelp`). |
+| `/vb menu` | Opens the player hub: guide, team, queue, duel, info and (for staff) admin. |
+| `/vb guide` | Opens the paged gameplay guide. |
+| `/vb team ...` | Same as `/volleyteam` (create, invite, roles, queueing, chat...). |
+| `/vb duel <team> <1\|3\|5>` | Same as `/teamduel`. |
+| `/vb join [arena]` | Same as `/volleyjoin`. |
+| `/vb leave` | Same as `/volleyleave`. |
+| `/vb admin panel` | Opens the admin control panel (arena list, tools, reload). |
+| `/vb admin guide` | Opens the paged setup guide for staff. |
+| `/vb admin wand\|arena\|setarena\|setbackrow\|setballspawnpoint\|spawnball\|start\|stop\|restart\|give\|music\|reload ...` | Forwards to the matching setup command below. |
+
+The legacy commands below remain registered and behave exactly like their `/vb`
+equivalents, so existing scripts, signs and documentation keep working.
 
 ### Game and arena
 
@@ -97,15 +119,15 @@ its own waiting room and signs; players do not need to be in a team.
 
 ### Setting up a queue arena
 
-1. Finish the arena normally and check `/volleyarena info <arena>`.
-2. Stand in the lobby and run `/volleyarena set lobby <arena>`.
+1. Finish the arena normally and check `/vb admin arena info <arena>`.
+2. Stand in the lobby and run `/vb admin arena set lobby <arena>`.
 3. Set the player limits:
-   `/volleyarena set min <arena> 2` and `/volleyarena set max <arena> 12`.
+   `/vb admin arena set min <arena> 2` and `/vb admin arena set max <arena> 12`.
    The maximum is `12`; each side can hold at most `6` players.
 4. Look at a sign within 6 blocks and run
-   `/volleyarena sign add <arena>`. Repeat for every join sign.
-5. Enable the queue: `/volleyarena set queue <arena> true`.
-6. Join with `/volleyjoin <arena>` or by right-clicking a join sign.
+   `/vb admin arena sign add <arena>`. Repeat for every join sign.
+5. Enable the queue: `/vb admin arena set queue <arena> true`.
+6. Join with `/vb join <arena>` or by right-clicking a join sign.
 
 `/volleyarena set queue <arena> false` stops new joins. Use
 `/volleyarena sign remove <arena>` while looking at a sign to unlink it. Breaking
@@ -292,8 +314,10 @@ Data is split so editing or regenerating one file cannot destroy courts or teams
   startup and `/volleyreload`. Placeholders use `{name}` such as `{team}`,
   `{arena}`, `{players}` or `{seconds}`.
 - `gui.yml` – menu titles, sizes, filler glass, button slots and item
-  materials/names/lore. Titles use legacy `&` codes; item text uses `&` codes and
-  `{}` placeholders. `/volleyreload` re-reads it.
+  materials/names/lore. All text uses Adventure MiniMessage, e.g. `<#f08e26>`,
+  `<bold>`, `<gray>` and `<gradient:#f08e26:#ff9f40>`, plus `{}` placeholders.
+  The theme is `#F08E26` with `BLACK_STAINED_GLASS_PANE` filler. `/vb admin
+  reload` re-reads it.
 - `arenas/<name>.yml` – courts, back rows, ball spawn points, positions `1`–`6`,
   facing directions, per-team display name/colour, optional `lobby` and
   `spectator-spawn` locations, and queue settings (`queue.enabled`,
@@ -367,12 +391,27 @@ queue:
 
 ### `gui.yml`
 
-Every menu title, size, filler glass, button slot and item is configurable. The
-same black stained-glass pane is used as filler in all menus. The team screen uses
-a 6-row layout with the leader head at slot `4`, member heads in row 3 and the
-guide button at slot `0`. `/volleyjoin` uses the `queue-picker` menu when more than
-one queue arena is available. The guide menu is paged; its content is the
-`guide-pages` list at the bottom of the file.
+Every menu title, size, filler glass, button slot and item is configurable, and
+the same black stained-glass pane is used as filler everywhere.
+
+Menus included: `hub` (`/vb menu`), `guide` and `guide-topic` (player guide with
+category cards for Basics, Queue and Teams), `admin-guide`/`admin-guide-topic`
+(setup guide), `admin-panel`, `admin-arena-list`, `admin-arena`, `admin-tools`,
+`team-info`, `role-picker`, `team-color`, `member-actions`, `confirm`, `lineup`,
+`duel-result`, `arena-picker` and `queue-picker`.
+
+The team screen uses a 6-row layout: guide button at slot `0`, the leader's real
+head at slot `4`, up to five member heads at slots `10`–`14` (paged with arrows
+at `9`/`17` when the roster is larger), a stats card at `22`, then invite, colour,
+leave, name, tag, invites and disband across the bottom rows. Lore uses the
+`<#f08e26>Description` / ` <#f08e26>| <gray>...` style and the summary item exposes
+`{team}`, `{members}`, `{max}`, `{wins}`, `{losses}`, `{sets}` and `{points}`.
+`/vb join` uses the `queue-picker` menu when more than one queue arena is
+available.
+
+Guide content lives in the `guide-pages` and `admin-guide-pages` lists at the
+bottom of the file; each entry has `title`, `icon`, `heading` and `text`.
+Card targets are set with `target:` on the `tutorial`/`queue`/`team` items.
 
 ### Adding a new default safely
 
@@ -382,13 +421,19 @@ one queue arena is available. The guide menu is paged; its content is the
 
 ## Permissions
 
-All permissions default to `op` except `heroicvolleyball.team`,
+All permissions default to `op` except `heroicvolleyball.hub`,
+`heroicvolleyball.help`, `heroicvolleyball.guide`, `heroicvolleyball.team`,
 `heroicvolleyball.team.duel` and `heroicvolleyball.queue`, which default to
-`true`.
+`true`. `heroicvolleyball.admin` is a parent node that grants every setup
+permission below.
 
 | Permission | Purpose |
 | --- | --- |
-| `heroicvolleyball.volleywand` | `/volleywand` |
+| `heroicvolleyball.hub` | `/vb`, `/vb menu` and the hub |
+| `heroicvolleyball.help` | `/vb help`, `/volleyhelp` |
+| `heroicvolleyball.guide` | Player guide (`/vb guide`, guide buttons) |
+| `heroicvolleyball.admin` | Admin panel, admin guide and all setup commands |
+| `heroicvolleyball.volleywand` | `/volleywand` (alias `/vb admin wand`) |
 | `heroicvolleyball.setarena` | `/setarena` |
 | `heroicvolleyball.setbackrow` | `/setbackrow` |
 | `heroicvolleyball.setballspawnpoint` | `/setballspawnpoint` |
@@ -405,6 +450,9 @@ All permissions default to `op` except `heroicvolleyball.team`,
 | `heroicvolleyball.queue` | `/volleyjoin`, `/volleyleave` |
 | `heroicvolleyball.queue.admin` | Queue limits, lobby and enable/disable subcommands |
 | `heroicvolleyball.queue.signs` | Adding and removing join signs |
+
+Buttons inside the admin panel and arena screens are shown locked with a grey dye
+when the viewer lacks the matching granular permission.
 
 `queue.admin` and `queue.signs` are checked inside `/volleyarena set` and
 `/volleyarena sign`; those commands also require `heroicvolleyball.volleyarena`.
