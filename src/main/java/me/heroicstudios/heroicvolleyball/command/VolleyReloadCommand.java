@@ -22,6 +22,7 @@ public final class VolleyReloadCommand implements CommandExecutor {
         plugin.getMessages().reload();
         plugin.getGuiConfig().reload();
         plugin.getArenaManager().loadAll();
+        plugin.getQueueManager().reload();
 
         for (GameSession session : plugin.getSessionManager().sessions()) {
             session.getBall().loadConfig();

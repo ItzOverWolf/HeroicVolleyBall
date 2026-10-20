@@ -6,8 +6,10 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public final class Arena {
@@ -23,6 +25,10 @@ public final class Arena {
     private final EnumMap<Side, TextColor> teamColors = new EnumMap<>(Side.class);
     private Location lobby;
     private Location spectatorSpawn;
+    private boolean queueEnabled;
+    private int minPlayers = 2;
+    private int maxPlayers = 12;
+    private final List<Location> joinSigns = new ArrayList<>();
 
     public Arena(String name) {
         this.name = name;
@@ -165,6 +171,99 @@ public final class Arena {
         this.spectatorSpawn = location != null && location.getWorld() != null ? location.clone() : null;
     }
 
+    public boolean isQueueEnabled() {
+        return queueEnabled;
+    }
+
+    public void setQueueEnabled(boolean queueEnabled) {
+        this.queueEnabled = queueEnabled;
+    }
+
+    public int getMinPlayers() {
+        return minPlayers;
+    }
+
+    public void setMinPlayers(int minPlayers) {
+        this.minPlayers = Math.max(2, Math.min(12, minPlayers));
+        if (maxPlayers < this.minPlayers) {
+            maxPlayers = this.minPlayers;
+        }
+    }
+
+    public int getMaxPlayers() {
+        return maxPlayers;
+    }
+
+    public void setMaxPlayers(int maxPlayers) {
+        this.maxPlayers = Math.max(2, Math.min(12, maxPlayers));
+        if (minPlayers > this.maxPlayers) {
+            minPlayers = this.maxPlayers;
+        }
+    }
+
+    /** No side may ever field more than six players. */
+    public int getMaxPerSide() {
+        return Math.min(6, Math.max(1, (maxPlayers + 1) / 2));
+    }
+
+    public List<Location> getJoinSigns() {
+        List<Location> copy = new ArrayList<>(joinSigns.size());
+        for (Location location : joinSigns) {
+            copy.add(location.clone());
+        }
+        return copy;
+    }
+
+    public void setJoinSigns(List<Location> locations) {
+        joinSigns.clear();
+        if (locations != null) {
+            for (Location location : locations) {
+                addJoinSign(location);
+            }
+        }
+    }
+
+    public boolean addJoinSign(Location location) {
+        if (location == null || location.getWorld() == null) {
+            return false;
+        }
+        Location normalized = location.toBlockLocation();
+        for (Location existing : joinSigns) {
+            if (sameBlock(existing, normalized)) {
+                return false;
+            }
+        }
+        joinSigns.add(normalized);
+        return true;
+    }
+
+    public boolean removeJoinSign(Location location) {
+        if (location == null) {
+            return false;
+        }
+        return joinSigns.removeIf(existing -> sameBlock(existing, location));
+    }
+
+    public boolean isJoinSign(Location location) {
+        if (location == null) {
+            return false;
+        }
+        for (Location sign : joinSigns) {
+            if (sameBlock(sign, location)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean sameBlock(Location first, Location second) {
+        return first.getWorld() != null && second.getWorld() != null
+                && first.getWorld().equals(second.getWorld())
+                && first.getBlockX() == second.getBlockX()
+                && first.getBlockY() == second.getBlockY()
+                && first.getBlockZ() == second.getBlockZ();
+    }
+
     public @Nullable Side getCourtSide(Location location) {
         for (Side side : Side.values()) {
             Region region = courts.get(side);
@@ -272,6 +371,10 @@ public final class Arena {
         }
         copy.setLobby(lobby);
         copy.setSpectatorSpawn(spectatorSpawn);
+        copy.setQueueEnabled(queueEnabled);
+        copy.setMaxPlayers(maxPlayers);
+        copy.setMinPlayers(minPlayers);
+        copy.setJoinSigns(joinSigns);
         return copy;
     }
 }

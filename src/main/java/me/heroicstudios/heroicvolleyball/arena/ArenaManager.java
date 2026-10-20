@@ -319,7 +319,52 @@ public final class ArenaManager {
         }
         arena.setLobby(readLocation(config, "lobby"));
         arena.setSpectatorSpawn(readLocation(config, "spectator-spawn"));
+        arena.setQueueEnabled(config.getBoolean("queue.enabled", false));
+        arena.setMaxPlayers(config.getInt("queue.max-players", 12));
+        arena.setMinPlayers(config.getInt("queue.min-players", 2));
+        arena.setJoinSigns(readLocations(config, "queue.join-signs"));
+        arena.setJoinSigns(validateSigns(arena.getJoinSigns()));
         return arena;
+    }
+
+    private List<Location> readLocations(YamlConfiguration config, String path) {
+        List<Location> locations = new ArrayList<>();
+        List<?> list = config.getList(path);
+        if (list == null) {
+            return locations;
+        }
+        for (Object entry : list) {
+            if (entry instanceof Location location && location.getWorld() != null) {
+                locations.add(location);
+            }
+        }
+        return locations;
+    }
+
+    /**
+     * Drops sign locations whose world is gone or whose block is no longer a
+     * sign. Chunks that are not loaded yet are kept; they are checked again the
+     * next time the sign is updated or clicked.
+     */
+    private List<Location> validateSigns(List<Location> signs) {
+        if (signs.isEmpty()) {
+            return signs;
+        }
+        List<Location> valid = new ArrayList<>(signs.size());
+        for (Location location : signs) {
+            World world = location.getWorld();
+            if (world == null) {
+                continue;
+            }
+            if (!world.isChunkLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4)) {
+                valid.add(location);
+                continue;
+            }
+            if (world.getBlockAt(location).getState() instanceof org.bukkit.block.Sign) {
+                valid.add(location);
+            }
+        }
+        return valid;
     }
 
     private YamlConfiguration toYaml(Arena arena) {
@@ -349,6 +394,12 @@ public final class ArenaManager {
         }
         if (arena.getSpectatorSpawn() != null) {
             config.set("spectator-spawn", arena.getSpectatorSpawn());
+        }
+        config.set("queue.enabled", arena.isQueueEnabled());
+        config.set("queue.min-players", arena.getMinPlayers());
+        config.set("queue.max-players", arena.getMaxPlayers());
+        if (!arena.getJoinSigns().isEmpty()) {
+            config.set("queue.join-signs", arena.getJoinSigns());
         }
         return config;
     }

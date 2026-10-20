@@ -49,7 +49,7 @@ commands:
     permission: heroicvolleyball.volleyreload
   volleyarena:
     description: Creates, lists, inspects, enables or deletes arenas
-    usage: /volleyarena <create|delete|clone|rename|list|info|enable|disable> [name] [name]
+    usage: /volleyarena <create|delete|clone|rename|list|info|enable|disable|set|sign> [name] [name]
     permission: heroicvolleyball.volleyarena
   volleymusic:
     description: Plays Note Block Studio music for the game
@@ -65,6 +65,21 @@ commands:
     usage: /teamduel <team> <sets>
     aliases: [vduel]
     permission: heroicvolleyball.team.duel
+  volleyjoin:
+    description: Join the public queue, optionally for a specific arena
+    usage: /volleyjoin [arena]
+    aliases: [vjoin]
+    permission: heroicvolleyball.queue
+  volleyleave:
+    description: Leave your queue or current match
+    usage: /volleyleave
+    aliases: [vleave, vquit]
+    permission: heroicvolleyball.queue
+  volleyhelp:
+    description: View help for HeroicVolleyBall
+    usage: /volleyhelp [page]
+    aliases: [vhelp]
+    permission: heroicvolleyball.help
 
 permissions:
   heroicvolleyball.volleywand:
@@ -109,3 +124,12 @@ permissions:
   heroicvolleyball.team.duel:
     description: Allows challenging other teams to a duel
     default: true
+  heroicvolleyball.queue:
+    description: Allows joining and leaving the public queue
+    default: true
+  heroicvolleyball.queue.admin:
+    description: Allows managing arena queue settings and join signs
+    default: op
+  heroicvolleyball.queue.signs:
+    description: Allows adding and removing arena join signs
+    default: op

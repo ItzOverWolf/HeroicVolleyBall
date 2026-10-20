@@ -276,6 +276,7 @@ duel:
   challenge-expired-other: "<gray>Your challenge to {team} expired."
   arena-none: "<red>No free arena is available for the duel."
   lineup-title: "<dark_gray><bold>ᴄʜᴏᴏsᴇ ʏᴏᴜʀ ʟɪɴᴇᴜᴘ"
+  lineup-queued: "<yellow>{player} is in the public queue and was left out of the lineup."
   lineup-min: "<red>Each team must field at least one player."
   lineup-mismatch: "<red>Both teams must field the same number of players. Your opponent chose {count}."
   lineup-ready: "<green><bold>ʀᴇᴀᴅʏ"
@@ -336,6 +337,111 @@ music:
   songs: "<gold>Songs:"
   song-entry: "<gray> - {song}"
   reloaded: "<green>Music configuration reloaded."
+
+# Help command messages
+help:
+  header: "<gradient:#eb8c34:#ff9f40><bold>HEROIC VOLLEYBALL</bold></gradient> <gray>| <white>Help Menu</white>"
+  footer: "<gray>Type <white>/volleyhelp <page></white> for more info"
+  pages:
+    1:
+      title: "<#eb8c34><bold>GETTING STARTED</bold></#eb8c34>"
+      lines:
+        - " <#eb8c34>|</#eb8c34> <white>/volleywand</white> <gray>- Get selection tool"
+        - " <#eb8c34>|</#eb8c34> <white>/volleyarena create <name></white> <gray>- Create arena"
+        - " <#eb8c34>|</#eb8c34> <white>/setarena <red|blue></white> <gray>- Set court region"
+        - " <#eb8c34>|</#eb8c34> <white>/startgame [arena]</white> <gray>- Start a match"
+        - " <#eb8c34>|</#eb8c34> <white>/volleyjoin [arena]</white> <gray>- Join public queue"
+    2:
+      title: "<#eb8c34><bold>GAMEPLAY</bold></#eb8c34>"
+      lines:
+        - " <#eb8c34>|</#eb8c34> <white>Shovel</white> <gray>- Bump ball up/forward"
+        - " <#eb8c34>|</#eb8c34> <white>Sword</white> <gray>- Spike (down from above)"
+        - " <#eb8c34>|</#eb8c34> <white>Shield</white> <gray>- Block or catch underneath"
+        - " <#eb8c34>|</#eb8c34> <white>3 touches</white> <gray>per possession"
+        - " <#eb8c34>|</#eb8c34> <white>Sneak+RClick</white> <gray>- Cycle tool tier"
+    3:
+      title: "<#eb8c34><bold>TEAMS & DUELS</bold></#eb8c34>"
+      lines:
+        - " <#eb8c34>|</#eb8c34> <white>/volleyteam create <name></white> <gray>- Make a team"
+        - " <#eb8c34>|</#eb8c34> <white>/volleyteam invite <player></white> <gray>- Invite player"
+        - " <#eb8c34>|</#eb8c34> <white>/volleyteam info</white> <gray>- Open team GUI"
+        - " <#eb8c34>|</#eb8c34> <white>/teamduel <team> <1|3|5></white> <gray>- Challenge team"
+        - " <#eb8c34>|</#eb8c34> <white>/volleyteam queue</white> <gray>- Queue your team"
+    4:
+      title: "<#eb8c34><bold>QUEUE & ARENAS</bold></#eb8c34>"
+      lines:
+        - " <#eb8c34>|</#eb8c34> <white>/volleyjoin</white> <gray>- Join queue/picker"
+        - " <#eb8c34>|</#eb8c34> <white>/volleyleave</white> <gray>- Leave queue/match"
+        - " <#eb8c34>|</#eb8c34> <white>/volleyarena set queue <arena> true</white> <gray>- Enable queue"
+        - " <#eb8c34>|</#eb8c34> <white>/volleyarena sign add <arena></white> <gray>- Add join sign"
+        - " <#eb8c34>|</#eb8c34> <white>/volleyarena list/info</white> <gray>- Check arenas"
+    5:
+      title: "<#eb8c34><bold>RULES QUICK REF</bold></#eb8c34>"
+      lines:
+        - " <#eb8c34>|</#eb8c34> <white>Sets/Points</white> <gray>- Win sets to win match"
+        - " <#eb8c34>|</#eb8c34> <white>Touches</white> <gray>- Max 3 per possession"
+        - " <#eb8c34>|</#eb8c34> <white>Block</white> <gray>- Doesn't count as touch"
+        - " <#eb8c34>|</#eb8c34> <white>Serve</white> <gray>- From Position 6"
+        - " <#eb8c34>|</#eb8c34> <white>Faults</white> <gray>- Score to opponent"
+
+# Public queue / lobby mode.
+queue:
+  disabled: "<red>Arena <white>{arena}</white> <red>is not accepting queue joins. Enable it with <white>/volleyarena set queue {arena} true</white>."
+  not-ready: "<red>Arena <white>{arena}</white> <red>is not fully set up yet."
+  in-game: "<red>Arena <white>{arena}</white> <red>is already in game."
+  full: "<red>The queue for <white>{arena}</white> is full."
+  already-queued: "<red>You are already in a queue or a match. Leave with <white>/volleyleave</white>."
+  no-arenas: "<red>No queue arenas are available right now."
+  not-queued: "<red>You are not in a queue."
+  joined: "<green>You joined the queue for <white>{arena}</white> <gray>({players}/{max})."
+  left: "<gray>You left the queue."
+  team-joined: "<green>Your team {team} <green>joined the queue for <white>{arena}</white> <gray>({players}/{max})."
+  team-empty: "<red>Your team has no online players to queue with."
+  team-too-big: "<red>Your team has {size} online players, but this arena allows at most {max} per side."
+  team-limit: "<red>This arena already has two queued teams."
+  team-no-fit: "<red>Your team does not fit in the queue for <white>{arena}</white>."
+  team-members-busy: "<red>{player} is already in a queue or a match."
+  team-already-queued: "<red>Your team is already in a queue."
+  team-not-queued: "<red>Your team is not in a queue."
+  team-unqueued: "<yellow>{team} <yellow>left the queue for <white>{arena}</white>."
+  countdown-started: "<gold>The match in <white>{arena}</white> starts in <white>{seconds}s</white> <gray>({players}/{max})."
+  countdown-actionbar: "<gold>Starting in {seconds}s <gray>({players}/{max})"
+  countdown-cancelled: "<yellow>Not enough players. Countdown cancelled."
+  countdown-shortened: "<gold>The arena is full! Countdown shortened to <white>{seconds}s</white>."
+  started: "<gold>Match started in <white>{arena}</white> <gray>({players} players)."
+  odd-returned: "<yellow>There was an odd number of players, so you stay in the queue for the next match."
+  odd-no-solo: "<yellow>Not enough players to make even sides. Countdown cancelled."
+  balance-failed: "<red>Could not balance the teams. Countdown cancelled."
+  match-over: "{team} <white>wins the match!"
+  disconnect-pause: "<yellow>{player} disconnected. Waiting up to {seconds}s for their side before forfeiting..."
+  leave-item: "<red>Leave Queue"
+  board:
+    title: "<gold>Volleyball Queue"
+    arena: "<gray>Arena: <white>{arena}"
+    players: "<gray>Players: <white>{players}</white><gray>/<white>{max}"
+    min: "<gray>Minimum: <white>{min}"
+    status: "<gray>Status: <white>{status}"
+  status:
+    waiting: "Waiting"
+    starting: "Starting"
+    in-game: "In game"
+  sign-line-1: "<dark_aqua>{arena}"
+  sign-line-2: "<white>{players}</white><gray>/<white>{max}"
+  sign-line-3: "<gold>{status}"
+  sign-line-4: "<gray>Click to join"
+  set-usage: "<red>Usage: /volleyarena set <lobby|min|max|queue> <arena> [value]"
+  sign-usage: "<red>Usage: /volleyarena sign <add|remove> <arena>"
+  invalid-value: "<red>Value must be a number between 2 and 12."
+  set-lobby: "<green>Lobby spawn for arena <white>{arena}</white> <green>set to your location."
+  set-min: "<green>Minimum players for <white>{arena}</white> <green>set to <white>{value}</white>."
+  set-max: "<green>Maximum players for <white>{arena}</white> <green>set to <white>{value}</white>."
+  set-enabled: "<green>Arena <white>{arena}</white> <green>now accepts queue joins."
+  set-disabled: "<yellow>Arena <white>{arena}</white> <yellow>no longer accepts queue joins."
+  sign-look: "<red>Look at a sign within 6 blocks."
+  sign-added: "<green>Added that sign to the queue for <white>{arena}</white>."
+  sign-removed: "<yellow>Removed that sign from the queue for <white>{arena}</white>."
+  sign-already: "<red>That sign is already a queue sign for <white>{arena}</white>."
+  sign-not-found: "<red>That sign is not linked to <white>{arena}</white>."
 
 # Inventory/effect snapshots. Players keep their normal items and effects while
 # a game is running and get them back when they leave or it ends.

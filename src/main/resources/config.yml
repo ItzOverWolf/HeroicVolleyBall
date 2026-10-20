@@ -231,3 +231,19 @@ session:
   # Maximum number of matches that may run at the same time across all arenas.
   # -1 means no limit.
   max-concurrent: -1
+
+# Public queue / lobby mode. Arenas opt in with /volleyarena set queue <arena> true.
+queue:
+  # Seconds the lobby waits once the minimum player count is reached.
+  countdown-seconds: 20
+  # The countdown shortens to this many seconds as soon as the arena is full.
+  full-countdown-seconds: 5
+  # Allow an odd number of players to start a match. When false, the most
+  # recent solo joiner is returned to the queue instead.
+  allow-uneven-sides: false
+  # Item given to waiting players so they can leave with a right-click.
+  leave-item: BARRIER
+  # Show the waiting lobby sidebar (arena, players, status).
+  scoreboard: true
+  # Seconds a match waits for an empty side to come back before forfeiting.
+  disconnect-grace-seconds: 60

@@ -12,6 +12,8 @@ import me.heroicstudios.heroicvolleyball.command.StartGameCommand;
 import me.heroicstudios.heroicvolleyball.command.StopGameCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyArenaCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyGiveCommand;
+import me.heroicstudios.heroicvolleyball.command.VolleyJoinCommand;
+import me.heroicstudios.heroicvolleyball.command.VolleyLeaveCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyMusicCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyReloadCommand;
 import me.heroicstudios.heroicvolleyball.command.VolleyTeamCommand;
@@ -24,6 +26,9 @@ import me.heroicstudios.heroicvolleyball.gui.GuiConfig;
 import me.heroicstudios.heroicvolleyball.gui.GuiListener;
 import me.heroicstudios.heroicvolleyball.gui.team.TeamGuiListener;
 import me.heroicstudios.heroicvolleyball.hook.VolleyballPlaceholders;
+import me.heroicstudios.heroicvolleyball.queue.QueueGui;
+import me.heroicstudios.heroicvolleyball.queue.QueueListener;
+import me.heroicstudios.heroicvolleyball.queue.QueueManager;
 import me.heroicstudios.heroicvolleyball.util.ChatInputManager;
 import me.heroicstudios.heroicvolleyball.listener.ArenaListener;
 import me.heroicstudios.heroicvolleyball.listener.SessionListener;
@@ -46,6 +51,8 @@ public final class HeroicVolleyBall extends JavaPlugin {
     private SessionManager sessionManager;
     private TeamManager teamManager;
     private DuelManager duelManager;
+    private QueueManager queueManager;
+    private QueueGui queueGui;
     private GuiConfig guiConfig;
     private ChatInputManager chatInput;
     private SetupGui setupGui;
@@ -66,6 +73,8 @@ public final class HeroicVolleyBall extends JavaPlugin {
         this.sessionManager = new SessionManager(this, arenaManager, toolManager);
         this.teamManager = new TeamManager(this);
         this.duelManager = new DuelManager(this, sessionManager);
+        this.queueManager = new QueueManager(this, sessionManager, arenaManager, teamManager, messages);
+        this.queueGui = new QueueGui(this, queueManager);
         this.chatInput = new ChatInputManager(this);
         this.chatInput.start();
         this.setupGui = new SetupGui(this, sessionManager);
@@ -80,6 +89,8 @@ public final class HeroicVolleyBall extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ToolListener(toolManager), this);
         getServer().getPluginManager().registerEvents(new BallListener(sessionManager, toolManager), this);
         getServer().getPluginManager().registerEvents(new SessionListener(this, sessionManager), this);
+        getServer().getPluginManager().registerEvents(new QueueListener(queueManager), this);
+        getServer().getPluginManager().registerEvents(queueGui, this);
         getServer().getPluginManager().registerEvents(setupGui, this);
         getServer().getPluginManager().registerEvents(arenaPickerGui, this);
         getServer().getPluginManager().registerEvents(new TeamGuiListener(this, chatInput), this);
@@ -120,9 +131,12 @@ public final class HeroicVolleyBall extends JavaPlugin {
         register("stopgame", new StopGameCommand(sessionManager, arenaManager, messages));
         register("restartgame", new RestartGameCommand(sessionManager, arenaManager, messages));
         register("volleyreload", new VolleyReloadCommand(this));
-        register("volleyarena", new VolleyArenaCommand(arenaManager, sessionManager, messages));
-        register("volleyteam", new VolleyTeamCommand(teamManager, sessionManager, messages));
+        register("volleyarena", new VolleyArenaCommand(arenaManager, sessionManager, queueManager, messages));
+        register("volleyteam", new VolleyTeamCommand(teamManager, sessionManager, queueManager, messages));
         register("teamduel", new DuelCommand(duelManager, teamManager, messages));
+        register("volleyjoin", new VolleyJoinCommand(queueManager, arenaManager, queueGui, messages));
+        register("volleyleave", new VolleyLeaveCommand(queueManager, sessionManager, messages));
+        try { register("volleyhelp", new me.heroicstudios.heroicvolleyball.command.VolleyHelpCommand(messages)); } catch (Throwable ignored) {}
 
         VolleyMusicCommand volleyMusicCommand = new VolleyMusicCommand(sessionManager, arenaManager, messages);
         PluginCommand volleyMusic = getCommand("volleymusic");
@@ -134,6 +148,7 @@ public final class HeroicVolleyBall extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, () -> {
             teamManager.tick();
             duelManager.tick();
+            queueManager.tick();
         }, 40L, 20L);
 
         VolleyGiveCommand volleyGiveCommand = new VolleyGiveCommand(toolManager, messages);
@@ -165,6 +180,9 @@ public final class HeroicVolleyBall extends JavaPlugin {
         // Each step is isolated: one failing shutdown must never skip the ball
         // removal below it, or the ball would be written to the world save as
         // a ghost that can't be interacted with after the restart.
+        if (queueManager != null) {
+            isolateShutdown("queues", queueManager::shutdown);
+        }
         if (sessionManager != null) {
             isolateShutdown("sessions", sessionManager::shutdown);
         }
@@ -218,6 +236,10 @@ public final class HeroicVolleyBall extends JavaPlugin {
 
     public DuelManager getDuelManager() {
         return duelManager;
+    }
+
+    public QueueManager getQueueManager() {
+        return queueManager;
     }
 
     public GuiConfig getGuiConfig() {
