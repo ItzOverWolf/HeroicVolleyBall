@@ -8,8 +8,8 @@ A Haikyuu-inspired Minecraft volleyball minigame! Play solo, join public matches
 - **Three tools:** Up, Spike, and Block, each with distinct uses and adjustable power.
 - **Match rules:** configurable set points, best-of sets, deuce, touch limits, and opponent-side touch penalties.
 - **Automatic player positioning and rotation** during team matches.
-- **Solo practice**, public queues, teams, and team duels.
-- **Multiple configurable arenas**, each with its own court regions, positions, and ball spawn points.
+- **Solo practice**, Practice Mode.
+- **Create Multiple arenas**, each with its own court regions, positions, and ball spawn points.
 - **In-game menus and guides** for players and administrators.
 - **Scoreboard, titles, chat announcements, potion effects, and Note Block Studio music.**
 - **PlaceholderAPI support** for scoreboards and other server displays.
@@ -143,5 +143,3 @@ Most gameplay settings can be changed in `config.yml` and reloaded with `/volley
 - `heroicvolleyball.volleywand`, `heroicvolleyball.volleyarena`, `heroicvolleyball.setarena`, `heroicvolleyball.setbackrow`, `heroicvolleyball.setballspawnpoint`, `heroicvolleyball.spawnball`, `heroicvolleyball.startgame`, `heroicvolleyball.stopgame`, `heroicvolleyball.restartgame`, `heroicvolleyball.volleygive`, `heroicvolleyball.volleyreload`, `heroicvolleyball.volleymusic`, `heroicvolleyball.queue.admin`, `heroicvolleyball.queue.signs` — individual admin/setup permissions (default: operators).
 
 ---
-
-**Fan-made project inspired by Haikyuu!!** Minecraft gameplay, tools, and matches are implemented in-game. Haikyuu!! and its associated music/other rights belong to their respective owners.
