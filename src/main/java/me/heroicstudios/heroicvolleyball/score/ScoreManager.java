@@ -33,6 +33,8 @@ public final class ScoreManager {
     private boolean scoreboardEnabled = true;
     private boolean showTitles = true;
     private boolean broadcastPoints = true;
+    private boolean deuceEnabled = true;
+    private int deuceMargin = 2;
 
     private int redPoints;
     private int bluePoints;
@@ -40,6 +42,7 @@ public final class ScoreManager {
     private int blueSets;
     private boolean matchOver;
     private boolean roundTransition;
+    private boolean deuceAnnounced;
     private int roundToken;
 
     private Scoreboard board;
@@ -95,6 +98,8 @@ public final class ScoreManager {
         this.scoreboardEnabled = plugin.getConfig().getBoolean("scoreboard.enabled", true);
         this.showTitles = plugin.getConfig().getBoolean("game.titles", true);
         this.broadcastPoints = plugin.getConfig().getBoolean("game.broadcast-points", true);
+        this.deuceEnabled = plugin.getConfig().getBoolean("game.deuce.enabled", true);
+        this.deuceMargin = Math.max(1, plugin.getConfig().getInt("game.deuce.margin", 2));
     }
 
     private void setupBoard() {
@@ -118,9 +123,20 @@ public final class ScoreManager {
     }
 
     public void redraw() {
-        scoreLine.customName(Component.text("Score: " + redPoints + " - " + bluePoints, NamedTextColor.WHITE));
-        redLine.customName(Component.text(session.teamName(Side.RED) + ": " + redSets, session.teamColor(Side.RED)));
-        blueLine.customName(Component.text(session.teamName(Side.BLUE) + ": " + blueSets, session.teamColor(Side.BLUE)));
+        scoreLine.customName(Component.text("Score: ", NamedTextColor.WHITE)
+                .append(colorComponent(Side.RED, String.valueOf(redPoints)))
+                .append(Component.text(" - ", NamedTextColor.DARK_GRAY))
+                .append(colorComponent(Side.BLUE, String.valueOf(bluePoints))));
+        redLine.customName(Component.text(session.teamName(Side.RED) + ": ", session.teamColor(Side.RED))
+                .append(colorComponent(Side.RED, String.valueOf(redSets))));
+        blueLine.customName(Component.text(session.teamName(Side.BLUE) + ": ", session.teamColor(Side.BLUE))
+                .append(colorComponent(Side.BLUE, String.valueOf(blueSets))));
+    }
+
+    /** Builds a component in the team colour, used by the scoreboard lines. */
+    private Component colorComponent(Side side, String value) {
+        TextColor color = session.teamColor(side);
+        return color != null ? Component.text(value, color) : Component.text(value);
     }
 
     public void apply(Player player) {
@@ -159,8 +175,8 @@ public final class ScoreManager {
 
         Messages messages = plugin.getMessages();
         String teamTag = session.teamDisplay(side);
-        String red = String.valueOf(redPoints);
-        String blue = String.valueOf(bluePoints);
+        String red = colorize(Side.RED, String.valueOf(redPoints));
+        String blue = colorize(Side.BLUE, String.valueOf(bluePoints));
 
         if (broadcastPoints) {
             session.broadcast(messages.get("score.point", "team", teamTag, "red", red, "blue", blue));
@@ -174,15 +190,82 @@ public final class ScoreManager {
         playTeamSound(side, Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.0f);
         playTeamSound(side.opposite(), Sound.ENTITY_WITHER_SPAWN, 1.0f, 1.0f);
 
+        announceDeuce();
+
         checkSet(side);
         if (!matchOver) {
             redraw();
         }
     }
 
-    private void checkSet(Side side) {
+    /** Announces the deuce once per deuce window so players know the set runs on. */
+    private void announceDeuce() {
+        if (!deuceEnabled || deuceAnnounced) {
+            return;
+        }
+        if (!isDeuce()) {
+            return;
+        }
+        deuceAnnounced = true;
+        Messages messages = plugin.getMessages();
+        String red = colorize(Side.RED, String.valueOf(redPoints));
+        String blue = colorize(Side.BLUE, String.valueOf(bluePoints));
+        if (broadcastPoints) {
+            session.broadcast(messages.get("score.deuce", "red", red, "blue", blue,
+                    "margin", String.valueOf(deuceMargin)));
+        }
+        if (showTitles) {
+            showTitle(
+                    messages.get("score.deuce-title", "red", red, "blue", blue,
+                            "margin", String.valueOf(deuceMargin)),
+                    messages.get("score.deuce-subtitle", "red", red, "blue", blue,
+                            "margin", String.valueOf(deuceMargin)));
+        }
+    }
+
+    /** Coloured "&lt;red&gt;12 - &lt;blue&gt;9" line used by the action bar and menus. */
+    public String coloredScore() {
+        return colorize(Side.RED, String.valueOf(redPoints)) + " <gray>-</gray> "
+                + colorize(Side.BLUE, String.valueOf(bluePoints));
+    }
+
+    /** Wraps a value in the team colour so scores never read as plain white numbers. */
+    private String colorize(Side side, String value) {
+        TextColor color = session.teamColor(side);
+        if (color == null) {
+            return value;
+        }
+        return "<" + color.asHexString() + ">" + value;
+    }
+
+    /**
+     * A set is won when a team reaches {@code points-per-set} and, with the
+     * deuce rule enabled, holds a {@code deuce.margin} point lead. That means
+     * 25-24 keeps the rally alive and the set ends on 26-24 or 27-25.
+     */
+    private boolean winsSet(Side side) {
         int points = side == Side.RED ? redPoints : bluePoints;
+        int other = side == Side.RED ? bluePoints : redPoints;
         if (points < pointsPerSet) {
+            return false;
+        }
+        if (!deuceEnabled) {
+            return true;
+        }
+        return points - other >= deuceMargin;
+    }
+
+    /** True while the score sits in the deuce zone (both teams level-ish at the set target). */
+    public boolean isDeuce() {
+        if (!deuceEnabled) {
+            return false;
+        }
+        int target = Math.max(1, pointsPerSet - 1);
+        return redPoints >= target && bluePoints >= target;
+    }
+
+    private void checkSet(Side side) {
+        if (!winsSet(side)) {
             return;
         }
 
@@ -193,11 +276,12 @@ public final class ScoreManager {
         }
         redPoints = 0;
         bluePoints = 0;
+        deuceAnnounced = false;
 
         Messages messages = plugin.getMessages();
         String teamTag = session.teamDisplay(side);
-        String redSetsText = String.valueOf(redSets);
-        String blueSetsText = String.valueOf(blueSets);
+        String redSetsText = colorize(Side.RED, String.valueOf(redSets));
+        String blueSetsText = colorize(Side.BLUE, String.valueOf(blueSets));
 
         if (broadcastPoints) {
             session.broadcast(messages.get("score.set", "team", teamTag,
@@ -273,8 +357,26 @@ public final class ScoreManager {
     }
 
     private void playTeamSound(Side side, Sound sound, float volume, float pitch) {
-        for (Player player : session.playersOf(side)) {
-            player.playSound(player.getLocation(), sound, volume, pitch);
+        java.util.List<org.bukkit.entity.Player> targets = session.playersOf(side);
+        if (!targets.isEmpty()) {
+            for (org.bukkit.entity.Player player : targets) {
+                player.playSound(player.getLocation(), sound, volume, pitch);
+            }
+            return;
+        }
+        // Fallback for solo matches - play to all participants
+        if (session.hasSoloPlayers()) {
+            for (org.bukkit.entity.Player player : session.players()) {
+                player.playSound(player.getLocation(), sound, volume, pitch);
+            }
+            return;
+        }
+        // Last resort
+        for (org.bukkit.entity.Player player : session.players()) {
+            Side playerSide = session.getSide(player);
+            if (playerSide == side) {
+                player.playSound(player.getLocation(), sound, volume, pitch);
+            }
         }
     }
 
@@ -285,6 +387,7 @@ public final class ScoreManager {
         blueSets = 0;
         matchOver = false;
         roundTransition = false;
+        deuceAnnounced = false;
         roundToken++;
         redraw();
         applyAll();

@@ -52,6 +52,10 @@ commands:
     description: Reloads the HeroicVolleyBall configuration
     usage: /volleyreload
     permission: heroicvolleyball.volleyreload
+  volleydebug:
+    description: Toggles debug logging for troubleshooting
+    usage: /vb admin debug <on|off|toggle|status|reload>
+    permission: heroicvolleyball.admin
   volleyarena:
     description: Creates, lists, inspects, enables or deletes arenas
     usage: /volleyarena <create|delete|clone|rename|list|info|enable|disable|set|sign> [name] [name]
@@ -112,6 +116,7 @@ permissions:
       heroicvolleyball.volleygive: true
       heroicvolleyball.volleymusic: true
       heroicvolleyball.volleyreload: true
+      heroicvolleyball.volleydebug: true
       heroicvolleyball.queue.admin: true
       heroicvolleyball.queue.signs: true
   heroicvolleyball.volleywand:

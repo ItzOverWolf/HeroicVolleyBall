@@ -32,6 +32,7 @@ import me.heroicstudios.heroicvolleyball.queue.QueueListener;
 import me.heroicstudios.heroicvolleyball.queue.QueueManager;
 import me.heroicstudios.heroicvolleyball.util.ChatInputManager;
 import me.heroicstudios.heroicvolleyball.listener.ArenaListener;
+import me.heroicstudios.heroicvolleyball.listener.ItemRestrictionListener;
 import me.heroicstudios.heroicvolleyball.listener.SessionListener;
 import me.heroicstudios.heroicvolleyball.message.Messages;
 import me.heroicstudios.heroicvolleyball.team.TeamManager;
@@ -96,6 +97,7 @@ public final class HeroicVolleyBall extends JavaPlugin {
         getServer().getPluginManager().registerEvents(setupGui, this);
         getServer().getPluginManager().registerEvents(arenaPickerGui, this);
         getServer().getPluginManager().registerEvents(new TeamGuiListener(this, chatInput), this);
+        getServer().getPluginManager().registerEvents(new ItemRestrictionListener(this), this);
 
         if (getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
             new VolleyballPlaceholders(this).register();
@@ -158,12 +160,13 @@ public final class HeroicVolleyBall extends JavaPlugin {
             volleyGive.setExecutor(volleyGiveCommand);
             volleyGive.setTabCompleter(volleyGiveCommand);
         }
+        register("volleydebug", new me.heroicstudios.heroicvolleyball.command.admin.VolleyDebugCommand(this));
 
         this.rootCommand = new VolleyRootCommand(this, messages);
         for (String name : java.util.List.of("volleyteam", "teamduel", "volleyjoin", "volleyleave",
                 "volleywand", "volleyarena", "setarena", "setbackrow", "setballspawnpoint",
                 "spawnball", "startgame", "stopgame", "restartgame", "volleygive",
-                "volleymusic", "volleyreload")) {
+                "volleymusic", "volleyreload", "volleydebug")) {
             rootCommand.route(name, getCommand(name));
         }
         PluginCommand vb = getCommand("vb");

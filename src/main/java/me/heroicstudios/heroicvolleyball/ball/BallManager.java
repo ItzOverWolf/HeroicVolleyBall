@@ -17,6 +17,7 @@ import me.heroicstudios.heroicvolleyball.score.ScoreManager;
 import me.heroicstudios.heroicvolleyball.tool.ToolManager;
 import me.heroicstudios.heroicvolleyball.tool.VolleyTier;
 import me.heroicstudios.heroicvolleyball.tool.VolleyTool;
+import me.heroicstudios.heroicvolleyball.util.Text;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
@@ -59,6 +60,8 @@ public final class BallManager {
 
     /** Ticks the ball visually pulses after a hit. */
     private static final int HIT_PULSE_TICKS = 4;
+    /** How long a hit message keeps the action bar before the solo indicator returns. */
+    private static final int FEEDBACK_TICKS = 40;
 
     private static final double TWO_PI = Math.PI * 2.0;
 
@@ -102,11 +105,14 @@ public final class BallManager {
     private double spikeUp = 0.7;
     private double spikeTopHorizontal = 0.25;
     private double spikeVerticalThreshold = 1.0;
-    private double shieldDeflect = 0.9;
-    private double shieldForward = 0.6;
     private double shieldCatchPower = 0.8;
     private double shieldCatchReach = 2.5;
     private double shieldCatchHeight = 3.0;
+    private double shieldBlockPower = 1.0;
+    private double shieldBlockLift = 0.25;
+    private double shieldBlockMinSpeed = 0.45;
+    private double shieldBlockUpAngle = 10.0;
+    private double shieldPopUpHeight = 0.3;
     private int shieldCooldown = 100;
     private int shieldCooldownTicks;
     private boolean swingFallback = true;
@@ -145,6 +151,8 @@ public final class BallManager {
     private int stuckTimeoutTicks = 30 * 20;
     private int outOfBoundsTicks;
     private int idleRallyTicks;
+    private int soloIndicatorTicks;
+    private int feedbackTicks;
     private boolean spinEnabled = true;
     private boolean shadowEnabled = true;
     private boolean trailEnabled = true;
@@ -181,11 +189,14 @@ public final class BallManager {
         this.spikeUp = config.getDouble("ball.spike.up", 0.7);
         this.spikeTopHorizontal = config.getDouble("ball.spike.top-horizontal", 0.25);
         this.spikeVerticalThreshold = config.getDouble("ball.spike.vertical-threshold", 1.0);
-        this.shieldDeflect = config.getDouble("ball.shield.deflect", config.getDouble("ball.shield-deflect", 0.9));
-        this.shieldForward = config.getDouble("ball.shield.forward", 0.6);
         this.shieldCatchPower = config.getDouble("ball.shield.catch-power", 0.8);
         this.shieldCatchReach = config.getDouble("ball.shield.catch-reach", 2.5);
         this.shieldCatchHeight = config.getDouble("ball.shield.catch-height", 3.0);
+        this.shieldBlockPower = Math.max(0.0, config.getDouble("ball.shield.block-power", 1.0));
+        this.shieldBlockLift = config.getDouble("ball.shield.block-lift", 0.25);
+        this.shieldBlockMinSpeed = Math.max(0.0, config.getDouble("ball.shield.block-min-speed", 0.45));
+        this.shieldBlockUpAngle = Math.max(0.0, config.getDouble("ball.shield.block-up-angle", 10.0));
+        this.shieldPopUpHeight = config.getDouble("ball.shield.pop-up-height", 0.3);
         this.shieldCooldown = Math.max(0, config.getInt("ball.shield.cooldown", 100));
         this.swingFallback = config.getBoolean("ball.hit.swing-fallback", true);
         this.swingReachBuffer = config.getDouble("ball.hit.swing-reach-buffer", 0.5);
@@ -289,7 +300,7 @@ public final class BallManager {
         if (meta != null) {
             meta.getPersistentDataContainer().set(ballKey, PersistentDataType.BOOLEAN, true);
             meta.displayName(plugin.getMessages().get("ball.name"));
-            meta.lore(plugin.getMessages().getLines("ball.lore"));
+            meta.lore(Text.nonItalic(plugin.getMessages().getLines("ball.lore")));
             item.setItemMeta(meta);
         }
 
@@ -497,10 +508,6 @@ public final class BallManager {
             plugin.getMessages().actionBar(player, "ball.shield-cooldown");
             return;
         }
-        if (tool == VolleyTool.SHIELD && isBelowBall(player)) {
-            plugin.getMessages().actionBar(player, "ball.shield-bottom");
-            return;
-        }
 
         lastHitTick = now;
         if (playerTeam != null) {
@@ -619,6 +626,7 @@ public final class BallManager {
         updateName();
 
         playHitSound(current, Sound.BLOCK_WOOL_PLACE, 1.0f, 1.2f);
+        feedbackTicks = FEEDBACK_TICKS;
         plugin.getMessages().actionBar(player, "ball.bump");
     }
 
@@ -660,7 +668,41 @@ public final class BallManager {
         updateName();
 
         playHitSound(current, Sound.BLOCK_WOOL_BREAK, 1.0f, 0.9f);
+        feedbackTicks = FEEDBACK_TICKS;
+        feedbackTicks = FEEDBACK_TICKS;
         plugin.getMessages().actionBar(player, "ball.spike");
+    }
+
+    /**
+     * Keeps a small action bar on screen during solo games so the player
+     * always knows which side they are on and what the score is. It steps
+     * aside for a moment after every hit so the hit feedback stays readable.
+     */
+    private void updateSoloIndicator() {
+        if (!session.hasSoloPlayers()) {
+            soloIndicatorTicks = 0;
+            return;
+        }
+        if (feedbackTicks > 0) {
+            feedbackTicks--;
+            return;
+        }
+        if (++soloIndicatorTicks < 20) {
+            return;
+        }
+        soloIndicatorTicks = 0;
+        Side side = session.getSoloSide();
+        if (side == null) {
+            return;
+        }
+        for (Player player : session.players()) {
+            if (session.getSide(player) != side) {
+                continue;
+            }
+            plugin.getMessages().actionBar(player, "ball.solo-indicator",
+                    "side", session.teamDisplay(side),
+                    "score", scoreManager.coloredScore());
+        }
     }
 
     private void tick() {
@@ -685,6 +727,7 @@ public final class BallManager {
         }
 
         tryShieldCatch();
+        updateSoloIndicator();
 
         // A grounded ball that has settled needs no integration or block
         // scans; only wake it back up when something moves it (a hit resets
@@ -976,23 +1019,118 @@ public final class BallManager {
         return false;
     }
 
+    /**
+     * The shield has two distinct moves:
+     *
+     * <ul>
+     *   <li><b>Chance ball</b> - the player stands under the ball and looks up.
+     *       The shield pops the ball straight up, exactly like a forearm pass
+     *       under the ball.</li>
+     *   <li><b>Block</b> - the player faces the incoming ball. The shield is
+     *       treated as a wall: the ball is mirrored around the shield face and
+     *       flies back the way it came, keeping the momentum it already had
+     *       (a block never makes the ball faster).</li>
+     * </ul>
+     */
     private void block(Player player) {
-        Vector forward = horizontalDirection(player);
-        motion.setX(forward.getX() * shieldForward * velocityScale);
-        motion.setZ(forward.getZ() * shieldForward * velocityScale);
-        motion.setY(-shieldDeflect * velocityScale);
+        if (isChanceBall(player)) {
+            popUp(player);
+            return;
+        }
+        wallBlock(player);
+    }
+
+    /** True when the player is under the ball and looking up at it. */
+    private boolean isChanceBall(Player player) {
+        if (!isLookingUp(player)) {
+            return false;
+        }
+        Location ballLocation = current != null ? current : ball.getLocation();
+        double dy = ballLocation.getY() - player.getEyeLocation().getY();
+        return dy >= shieldPopUpHeight;
+    }
+
+    /** True when the player is aiming above the horizon. */
+    private boolean isLookingUp(Player player) {
+        // Minecraft pitch is negative while looking up.
+        return player.getLocation().getPitch() <= -shieldBlockUpAngle;
+    }
+
+    /** Pops the ball upwards like a forearm pass - a chance ball for the attack. */
+    private void popUp(Player player) {
+        motion.setX(motion.getX() * 0.3);
+        motion.setZ(motion.getZ() * 0.3);
+        motion.setY(shieldCatchPower * velocityScale);
         wasOnGround = false;
         pulseTicks = HIT_PULSE_TICKS;
+        if (state == State.IDLE) {
+            state = State.RALLY;
+        }
+        startShieldCooldown(player);
+        updateName();
+
+        playHitSound(current, Sound.BLOCK_WOOL_BREAK, 1.0f, 1.3f);
+        feedbackTicks = FEEDBACK_TICKS;
+        plugin.getMessages().actionBar(player, "ball.shield-catch");
+    }
+
+    /**
+     * Treats the shield as a wall in front of the player. The incoming
+     * velocity is mirrored around the shield face so a ball that flies at the
+     * player travels back over the net. The speed of the ball is kept
+     * (scaled by {@code ball.shield.block-power}), a block never adds
+     * momentum.
+     */
+    private void wallBlock(Player player) {
+        Vector forward = horizontalDirection(player);
+        Vector velocity = motion.clone();
+        double speed = velocity.length();
+
+        Vector horizontal = velocity.clone().setY(0.0);
+        double horizontalSpeed = horizontal.length();
+
+        Vector outgoing;
+        if (horizontalSpeed < 0.05) {
+            // The ball drops almost straight down on the player: push it away.
+            double base = Math.max(speed, shieldBlockMinSpeed);
+            outgoing = forward.multiply(base);
+        } else {
+            Vector direction = horizontal.multiply(1.0 / horizontalSpeed);
+            double closing = direction.dot(forward);
+            if (closing < 0.0) {
+                // Mirror the horizontal direction around the shield face.
+                direction = direction.subtract(forward.multiply(2.0 * closing));
+            } else {
+                // Already travelling away - send it along the shield face.
+                direction = forward.clone();
+            }
+            outgoing = direction.multiply(horizontalSpeed);
+            outgoing.setY(velocity.getY());
+        }
+
+        // A block has to clear the net, so keep a small upward component.
+        if (outgoing.getY() < shieldBlockLift) {
+            outgoing.setY(shieldBlockLift);
+        }
+
+        double target = Math.max(speed * shieldBlockPower, shieldBlockMinSpeed);
+        double length = outgoing.length();
+        if (length > 0.0001) {
+            outgoing.multiply(target / length);
+        }
+
+        motion.copy(outgoing);
+        wasOnGround = false;
+        pulseTicks = HIT_PULSE_TICKS;
+        if (state == State.IDLE) {
+            state = State.RALLY;
+        }
         startShieldCooldown(player);
         updateName();
 
         playHitSound(current, Sound.BLOCK_WOOL_BREAK, 1.0f, 0.9f);
+        feedbackTicks = FEEDBACK_TICKS;
         plugin.getMessages().actionBar(player, "ball.shield-block");
-    }
-
-    private boolean isBelowBall(Player player) {
-        Location ballLocation = current != null ? current : ball.getLocation();
-        return player.getEyeLocation().getY() - ballLocation.getY() < -spikeVerticalThreshold;
     }
 
     private void tryShieldCatch() {
@@ -1045,6 +1183,7 @@ public final class BallManager {
         updateName();
 
         playHitSound(current, Sound.BLOCK_WOOL_BREAK, 1.0f, 1.3f);
+        feedbackTicks = FEEDBACK_TICKS;
         plugin.getMessages().actionBar(player, "ball.shield-catch");
     }
 

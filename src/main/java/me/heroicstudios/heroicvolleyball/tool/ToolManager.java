@@ -1,6 +1,7 @@
 package me.heroicstudios.heroicvolleyball.tool;
 
 import me.heroicstudios.heroicvolleyball.HeroicVolleyBall;
+import me.heroicstudios.heroicvolleyball.util.Text;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -60,7 +61,7 @@ public final class ToolManager {
             case SWORD -> "tool.sword-lore";
             default -> "tool.shield-lore";
         };
-        meta.lore(plugin.getMessages().getLines(loreKey, "tier", tierString));
+        meta.lore(Text.nonItalic(plugin.getMessages().getLines(loreKey, "tier", tierString)));
 
         meta.setUnbreakable(true);
         meta.addItemFlags(ItemFlag.HIDE_ENCHANTS, ItemFlag.HIDE_ATTRIBUTES,

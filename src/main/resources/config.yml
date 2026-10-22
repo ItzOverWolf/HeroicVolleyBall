@@ -45,17 +45,16 @@ ball:
   # up, 0.25 = slightly forward in the direction you are facing).
   shovel-forward: 0.15
   # Shield (Block) tool behaviour. The shield never uses a team touch.
-  # - Left-click a ball at its middle or top to knock it forward and down.
+  # - Look up under the ball and left-click to pop it straight up (chance ball).
+  # - Face the incoming ball and left-click to block it: the shield acts as a
+  #   wall, so the ball is mirrored back the way it came and can clear the net.
+  #   A block keeps the momentum of the ball, it never makes the ball faster.
   # - Hold right-click (shield raised) underneath the ball to catch it and pop
   #   it up like a free ball - no timing click, just aim at the bottom.
   # After any shield use the shield is on cooldown and can't be used again
   # until it recharges; the shovel and sword still work, so you catch with the
   # shield and follow up with the shovel.
   shield:
-    # Downward speed applied when deflecting a middle/top hit (0 = straight down).
-    deflect: 0.9
-    # Forward speed added in the direction you are facing when deflecting.
-    forward: 0.6
     # Upward speed of the ball when caught from below.
     catch-power: 0.8
     # Max horizontal distance (blocks) between the catching player and the ball.
@@ -64,6 +63,18 @@ ball:
     catch-height: 3.0
     # Ticks the shield is unusable after a deflect or catch (20 ticks = 1 second).
     cooldown: 100
+    # Block (wall) behaviour: the shield mirrors the ball around the shield face.
+    # block-power scales the speed the ball keeps. 1.0 keeps the incoming
+    # momentum exactly, higher values hit harder, lower values soften the block.
+    block-power: 1.0
+    # Minimum upward speed a block gives the ball so it can clear the net.
+    block-lift: 0.25
+    # Speed a block gives a ball that was barely moving.
+    block-min-speed: 0.45
+    # How far the player has to look up (in degrees) for the chance ball.
+    block-up-angle: 10.0
+    # Minimum height of the ball above the player's eyes for the chance ball.
+    pop-up-height: 0.3
   # Hit detection fallback for fast-falling balls. When the client and the
   # server disagree about where the ball is, the vanilla attack packet can
   # miss even though you clearly clicked the ball you saw. an arm swing whose
@@ -153,6 +164,12 @@ game:
   points-per-set: 25
   # Sets a team needs to win the match (best of 2 * sets-to-win - 1).
   sets-to-win: 2
+  # Deuce rule. When enabled a set is only won with a lead of "margin" points
+  # once the set target is reached: 25-24 keeps the rally alive, 26-24 wins.
+  # Disable it to award the set the moment a team reaches points-per-set.
+  deuce:
+    enabled: true
+    margin: 2
   # If true, hitting the ball while it is over the opponent's half gives the
   # opponent a point. The neutral gray ball (over the net / flying out of bounds)
   # is always free to touch and never causes this penalty.
@@ -247,3 +264,20 @@ queue:
   scoreboard: true
   # Seconds a match waits for an empty side to come back before forfeiting.
   disconnect-grace-seconds: 60
+
+
+# Rail guard restrictions
+restrictions:
+  items-outside-match:
+    drop: true
+    pickup: true
+
+# Debug options
+debug:
+  enabled: false
+  ball-physics: false
+  hits: false
+  scoring: false
+  sessions: false
+  sounds: false
+  gui: false
